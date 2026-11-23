@@ -754,7 +754,9 @@ theorem globalTwist_mem_rightHalf (χ : PontryaginDual C𝔽) {s : ℂ} (hs : 1 
   change 1 < quasiCharacterAbscissa _ _ _ _
   rwa [quasiCharacterAbscissa_ideleClassNormTwist]
 
-private theorem globalZ_eq_zero_of_theta_eq_zero (f : ℬ𝔽) (hf : adelicTheta f = 0) (c : X𝔽) :
+/-- A Schwartz-Bruhat function whose adelic theta series vanishes has zero global Z-function at
+every quasi-character of the idele class group. -/
+theorem globalZ_eq_zero_of_theta_eq_zero (f : ℬ𝔽) (hf : adelicTheta f = 0) (c : X𝔽) :
     globalIdelicZFunction f c = 0 := by
   obtain ⟨χ, s, rfl⟩ := exists_ideleClassNormTwist c
   refine congrFun (eq_of_agree_rightHalf (globalIdelicZFunction_meromorphic f χ)
