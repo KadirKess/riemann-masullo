@@ -2458,7 +2458,9 @@ private theorem sLocalPrincipalValue_chart (χ : PontryaginDual C𝔽)
       _ = c g := by rw [hval, ← hk, ← map_mul, hg]
 
 
-private theorem sLocalPrincipalValue_euler_form (χ : PontryaginDual C𝔽) (v : Places) :
+/-- Each inverse finite Hecke Euler factor is either the constant one or
+`1 - exp (-l z + i theta)` with `l > 0`, so it is periodic in the imaginary direction. -/
+theorem finiteHeckeEulerFactor_inv_eq_one_or_exp (χ : PontryaginDual C𝔽) (v : Places) :
     (fun z ↦ (finiteHeckeEulerFactor χ v z)⁻¹) = (1 : ℂ → ℂ) ∨
     ∃ ℓ : ℝ, 0 < ℓ ∧ ∃ θ : ℝ,
       (fun z ↦ (finiteHeckeEulerFactor χ v z)⁻¹) =
@@ -2622,7 +2624,7 @@ private theorem sLocalPrincipalValue_factor_order (χ : PontryaginDual C𝔽)
     AnalyticAt ℂ E s ∧
       meromorphicOrderAt E s = (if E s = 0 then 1 else 0) ∧ (E s = 0 → s.re = 0) := by
   classical
-  rcases sLocalPrincipalValue_euler_form χ v with h | ⟨ℓ, hℓ, θ, h⟩
+  rcases finiteHeckeEulerFactor_inv_eq_one_or_exp χ v with h | ⟨ℓ, hℓ, θ, h⟩
   · rw [h]
     refine ⟨analyticAt_const, ?_, ?_⟩
     · have h1 : (1 : ℂ → ℂ) s ≠ 0 := one_ne_zero
@@ -3043,7 +3045,7 @@ private theorem schwartzBergman_univ_div_exp (B : SchwartzBergman (univ : Set �
 
 /-- An entire quotient of a Schwartz–Bergman function by a finite product of
 vertical periodic Euler factors still decays rapidly on closed strips. -/
-private theorem schwartzBergman_univ_div_prod_exp {ι : Type*} (S : Finset ι) (A : ι → ℂ → ℂ)
+theorem schwartzBergman_univ_div_prod_exp {ι : Type*} (S : Finset ι) (A : ι → ℂ → ℂ)
     (hA : ∀ i ∈ S, A i = 1 ∨ ∃ ℓ : ℝ, 0 < ℓ ∧ ∃ θ : ℝ,
       A i = fun z ↦ 1 - Complex.exp (((-ℓ : ℝ) : ℂ) * z + (θ : ℂ) * Complex.I))
     (B : SchwartzBergman (univ : Set ℝ)) (u : ℂ → ℂ)
@@ -3326,7 +3328,7 @@ private theorem sLocalPrincipalValue_trivial_range {T : Finset Places} (hT : T �
     rw [he, he', mul_left_comm]
   let B' : SchwartzBergman (univ : Set ℝ) :=
     ⟨G * v, schwartzBergman_univ_div_prod_exp T
-      (fun w z ↦ (finiteHeckeEulerFactor χ w z)⁻¹) (fun w _ ↦ sLocalPrincipalValue_euler_form χ w)
+      (fun w z ↦ (finiteHeckeEulerFactor χ w z)⁻¹) (fun w _ ↦ finiteHeckeEulerFactor_inv_eq_one_or_exp χ w)
       B (G * v) (hGdiff.mul hv) hfact⟩
   have hp_ne (z : regular) : p z.val ≠ 0 := by
     have hz : z.val ≠ -a ∧ z.val ≠ 1 - a := by

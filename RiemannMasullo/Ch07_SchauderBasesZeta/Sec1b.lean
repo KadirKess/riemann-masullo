@@ -1578,7 +1578,7 @@ private theorem entire_jetIndices_finite (g : Entire) (hg : ∃ z, g.val z ≠ 0
   simpa using hk
 
 /-- Division of entire functions where the orders allow it: the quotient is analytic. -/
-private theorem entire_div_of_order_le (G F : ℂ → ℂ) (hG : Differentiable ℂ G)
+theorem entire_div_of_order_le (G F : ℂ → ℂ) (hG : Differentiable ℂ G)
     (hF : Differentiable ℂ F) (hG0 : ∃ z, G z ≠ 0) (U : Set ℂ)
     (h : ∀ z ∈ U, analyticOrderAt G z ≤ analyticOrderAt F z) :
     ∃ w : ℂ → ℂ, (∀ z ∈ U, AnalyticAt ℂ w z) ∧ ∀ z ∈ U, F z = G z * w z := by

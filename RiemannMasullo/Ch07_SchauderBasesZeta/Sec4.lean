@@ -611,11 +611,552 @@ theorem finiteNuclearityQuotient_mk_eq_zero (p : HeightOneSpectrum (𝓞 ℚ)) (
       (nuclearityPrincipalValue_mem_polar (F := F) p) f
     with_reducible exact hz
 
+/-- Absolute convergence on every norm line makes the Mellin multiplier entire. -/
+private theorem archNuclearityDenominator_closed_invariant_multiplier
+    (χ : PontryaginDual (IdeleClassGroup (𝓞 F) F)) (φ : 𝒟) :
+    Differentiable ℂ (nuclearityTestMellin χ φ) := by
+  let : BorelSpace C𝔽 := ⟨rfl⟩
+  let n := fun g : C𝔽 ↦ ((ideleClassNorm F g).val : ℝ)
+  let f := fun g : C𝔽 ↦ φ.val g * (χ g : ℂ)
+  have hn : Continuous n :=
+    NNReal.continuous_coe.comp (Units.continuous_val.comp (isProperMap_ideleClassNorm F).continuous)
+  have heq (s : ℂ) (g : C𝔽) : f g * (n g : ℂ) ^ s = testIntegrand(χ, φ, s) g :=
+    mul_assoc _ _ _
+  have h := analyticOnNhd_integral_mul_cpow_of_integrable μ𝔽 f n hn.measurable
+    (fun g ↦ NNReal.coe_pos.mpr (Units.zero_lt _)) isOpen_univ
+    (fun s _ ↦ by simpa only [heq] using (nuclearityTestMellin_integrable χ φ).1 s)
+  have hfun : nuclearityTestMellin χ φ = fun s ↦ ∫ g, f g * (n g : ℂ) ^ s ∂μ𝔽 := by
+    funext s
+    simp only [heq, nuclearityTestMellin]
+  rw [hfun]
+  exact fun s ↦ (h s (mem_univ _)).differentiableAt
+
+/-- Paper: Theorem 7.4.2.1(2), p. 367.
+A jet index pairs a zero of the reciprocal partial Euler product over the places
+above `p` with a derivative order below the multiplicity of that zero. -/
+abbrev FiniteNuclearityJetIndex (p : HeightOneSpectrum (𝓞 ℚ)) :=
+  {j : ℂ × ℕ // (j.2 : ℕ∞) < analyticOrderAt (reciprocalPartialHeckeEulerProduct χ (Sₚ(p))) j.1}
+
+/-- Paper: Theorem 7.4.2.1(2), p. 367, with the jets of Theorem 7.1.4.3, p. 331.
+The finite orbital jet differentiates the Mellin transform of a zero-moment theta class
+at a zero of the reciprocal partial Euler product. -/
+def finiteNuclearityJet (p : HeightOneSpectrum (𝓞 ℚ)) (j : FiniteNuclearityJetIndex χ p) :
+    StrongDual ℂ (Θ₀(χ)) :=
+  ((entireJet j.val.1 j.val.2).comp schwartzBergmanEntireInclusion).comp (Z(χ, τ, hτ))
+
+/-- Paper: Theorem 7.4.2.1(2), p. 367.
+A finite orbital jet is the iterated derivative of the Mellin transform at the zero. -/
+theorem finiteNuclearityJet_apply (p : HeightOneSpectrum (𝓞 ℚ)) (j : FiniteNuclearityJetIndex χ p)
+    (x : Θ₀(χ)) :
+    finiteNuclearityJet χ τ hτ p j x = iteratedDeriv j.val.2 ((Z(χ, τ, hτ)) x).val j.val.1 := by
+  unfold finiteNuclearityJet
+  rw [ContinuousLinearMap.comp_apply, ContinuousLinearMap.comp_apply, entireJet_apply]
+  exact congrArg (fun g : ℂ → ℂ ↦ iteratedDeriv j.val.2 g j.val.1)
+    (funext (schwartzBergmanEntireInclusion_apply _))
+
+/-- A Schwartz–Bergman function on the whole plane is entire. -/
+private theorem finiteNuclearity_differentiable (v : B) : Differentiable ℂ v.val := fun z ↦
+  (v.property.2.1 z (mem_univ _)).differentiableAt (Filter.univ_mem' fun _ ↦ mem_univ _)
+
+/-- The reciprocal partial Euler product is entire. -/
+private theorem finiteNuclearity_reciprocalEuler_differentiable (S : Finset V) :
+    Differentiable ℂ (reciprocalPartialHeckeEulerProduct χ S) := by
+  have hfactor (v : V) : Differentiable ℂ (fun w ↦ (finiteHeckeEulerFactor χ v w)⁻¹) := by
+    unfold finiteHeckeEulerFactor
+    split_ifs
+    · simp_rw [inv_inv]
+      have hq : (v.asIdeal.absNorm : ℂ) ≠ 0 :=
+        Nat.cast_ne_zero.mpr ((Ideal.absNorm_eq_zero_iff).not.mpr v.ne_bot)
+      exact (differentiable_const _).sub ((differentiable_const _).mul
+        (differentiable_neg.const_cpow (Or.inl hq)))
+    · simp_rw [inv_one]
+      exact differentiable_const _
+  unfold reciprocalPartialHeckeEulerProduct
+  exact Differentiable.fun_finsetProd (𝕜 := ℂ) fun v _ ↦ hfactor v
+
+/-- On a polar test the Mellin transform of the principal value is the reciprocal
+Euler product times the Mellin transform, at every point. -/
+private theorem finiteNuclearity_mellin_principalValue (p : HeightOneSpectrum (𝓞 ℚ)) (f : P)
+    (s : ℂ) :
+    ((Z(χ, τ, hτ)) mkΘ(χ, ⟨adelePrincipalValue F (Sₚ(p)) f.val,
+        nuclearityPrincipalValue_mem_polar (F := F) p f⟩)).val s =
+      reciprocalPartialHeckeEulerProduct χ (Sₚ(p)) s * ((Z(χ, τ, hτ)) mkΘ(χ, f)).val s := by
+  let g : P := ⟨adelePrincipalValue F (Sₚ(p)) f.val, nuclearityPrincipalValue_mem_polar (F := F) p f⟩
+  have hg (z : ℂ) : ((Z(χ, τ, hτ)) mkΘ(χ, g)).val z =
+      globalIdelicZFunction g.val (ideleClassNormTwist χ z) :=
+    ((exists_globalPolarThetaMellin χ τ hτ).choose_spec g z).2
+  have hf (z : ℂ) : ((Z(χ, τ, hτ)) mkΘ(χ, f)).val z =
+      globalIdelicZFunction f.val (ideleClassNormTwist χ z) :=
+    ((exists_globalPolarThetaMellin χ τ hτ).choose_spec f z).2
+  have h₁ := (finiteNuclearity_differentiable ((Z(χ, τ, hτ)) mkΘ(χ, g))).continuous.continuousAt
+    (x := s)
+  have h₂ := (finiteNuclearity_differentiable ((Z(χ, τ, hτ)) mkΘ(χ, f))).continuous.continuousAt
+    (x := s)
+  have hR := (finiteNuclearity_reciprocalEuler_differentiable χ (Sₚ(p))).continuous.continuousAt
+    (x := s)
+  have hev := (globalPrincipalValueConverse_mellin (Sₚ(p)) χ f.val).filter_mono
+    (nhdsNE_le_codiscrete s)
+  have hev' : (fun z ↦ ((Z(χ, τ, hτ)) mkΘ(χ, g)).val z) =ᶠ[nhdsWithin s {s}ᶜ]
+      (fun z ↦ reciprocalPartialHeckeEulerProduct χ (Sₚ(p)) z * ((Z(χ, τ, hτ)) mkΘ(χ, f)).val z) := by
+    filter_upwards [hev] with z hz
+    rw [hg, hf]
+    exact hz
+  exact ((h₁.eventuallyEq_nhds_iff_eventuallyEq_nhdsNE (hR.mul h₂)).mp hev').eq_of_nhds
+
+/-- Paper: Theorem 7.4.2.1(1), p. 367.
+Every finite orbital jet vanishes on the principal-value denominator, because the
+Mellin transform of a principal value is divisible by the reciprocal Euler product. -/
+theorem finiteNuclearityJet_eq_zero_of_mem (p : HeightOneSpectrum (𝓞 ℚ))
+    (j : FiniteNuclearityJetIndex χ p) {x : Θ₀(χ)} (hx : x ∈ finiteNuclearityDenominator χ p) :
+    finiteNuclearityJet χ τ hτ p j x = 0 := by
+  unfold finiteNuclearityDenominator at hx
+  induction hx using Submodule.span_induction with
+  | mem y hy =>
+    obtain ⟨f, rfl⟩ := hy
+    rw [finiteNuclearityJet_apply]
+    let R := reciprocalPartialHeckeEulerProduct χ (Sₚ(p))
+    let h := ((Z(χ, τ, hτ)) mkΘ(χ, f)).val
+    have hfun : ((Z(χ, τ, hτ)) mkΘ(χ, ⟨adelePrincipalValue F (Sₚ(p)) f.val,
+        nuclearityPrincipalValue_mem_polar (F := F) p f⟩)).val = R * h :=
+      funext (finiteNuclearity_mellin_principalValue χ τ hτ p f)
+    rw [hfun]
+    have hRa : AnalyticAt ℂ R j.val.1 :=
+      (finiteNuclearity_reciprocalEuler_differentiable χ (Sₚ(p))).analyticAt _
+    have hha : AnalyticAt ℂ h j.val.1 :=
+      (finiteNuclearity_differentiable ((Z(χ, τ, hτ)) mkΘ(χ, f))).analyticAt _
+    have hord : ((j.val.2 + 1 : ℕ) : ℕ∞) ≤ analyticOrderAt (R * h) j.val.1 := by
+      rw [analyticOrderAt_mul hRa hha]
+      exact (Order.add_one_le_of_lt (by exact_mod_cast j.property)).trans le_self_add
+    exact (natCast_le_analyticOrderAt_iff_iteratedDeriv_eq_zero (hRa.mul hha)).mp hord _
+      (Nat.lt_succ_self _)
+  | zero => exact map_zero _
+  | add y z _ _ hy hz => rw [map_add, hy, hz, add_zero]
+  | smul a y _ hy => rw [map_smul, hy, smul_zero]
+
+/-- Paper: Theorem 7.4.2.1(2), p. 367, and the proof of Theorem 7.4.1.1(2), p. 367.
+Every derivative of the Mellin transform of a compactly supported Bruhat test decays
+faster than any power of the height along each vertical line.
+Deviation: The printed proof uses this decay without proving it. -/
+theorem nuclearityTestMellin_iteratedDeriv_rapidDecay (φ : 𝒟) (σ : ℝ) (i N : ℕ) :
+    ∃ C : ℝ, ∀ t : ℝ,
+      (1 + |t|) ^ N * ‖iteratedDeriv i (nuclearityTestMellin χ φ) (σ + t * Complex.I)‖ ≤ C := by
+  sorry
+
+/-- Paper: Theorem 7.4.2.1(2), p. 367.
+For each power of the height, the finite orbital jets weighted by that power are
+equicontinuous at zero.
+Deviation: This is the bound on the functionals that ERRATA I247 records as missing. -/
+theorem finiteNuclearityJet_equicontinuousAt (p : HeightOneSpectrum (𝓞 ℚ)) (N : ℕ) :
+    EquicontinuousAt (fun (j : FiniteNuclearityJetIndex χ p) (x : Θ₀(χ)) ↦
+      ((1 + ‖j.val.1‖) ^ N : ℂ) * finiteNuclearityJet χ τ hτ p j x) 0 := by
+  sorry
+
+/-- Paper: Theorem 7.4.2.1(2), p. 367.
+The finite orbital jets have a biorthogonal family of zero-moment theta classes that
+grows at most polynomially in the height in every neighbourhood of zero.
+Deviation: This is the bound on the vectors that ERRATA I247 records as missing. -/
+theorem exists_finiteNuclearityJet_biorthogonal (p : HeightOneSpectrum (𝓞 ℚ)) :
+    ∃ e : FiniteNuclearityJetIndex χ p → Θ₀(χ),
+      (∀ i j, finiteNuclearityJet χ τ hτ p i (e j) = if i = j then 1 else 0) ∧
+      ∀ W ∈ 𝓝 (0 : Θ₀(χ)), ∃ N : ℕ, ∃ c : ℝ, 0 < c ∧
+        ∀ j, (((c * (1 + ‖j.val.1‖) ^ N : ℝ) : ℂ)⁻¹ • e j) ∈ W := by
+  sorry
+
+/-- Zeros of a reciprocal partial Euler product lie on the line of real part zero. -/
+private theorem finiteNuclearity_reciprocalEuler_zero_re (S : Finset V) {z : ℂ}
+    (hz : reciprocalPartialHeckeEulerProduct χ S z = 0) : z.re = 0 := by
+  classical
+  have hprod : (∏ v ∈ S, (finiteHeckeEulerFactor χ v z)⁻¹) = 0 := hz
+  obtain ⟨v, -, hzero⟩ := Finset.prod_eq_zero_iff.mp hprod
+  unfold finiteHeckeEulerFactor at hzero
+  split_ifs at hzero with hv
+  · rw [inv_inv, sub_eq_zero] at hzero
+    have hq : 1 < ((Ideal.absNorm v.asIdeal : ℕ) : ℝ) := by
+      exact_mod_cast HeightOneSpectrum.one_lt_absNorm v
+    have hn := congrArg (fun w : ℂ ↦ ‖w‖) hzero.symm
+    simp only [norm_mul, norm_ideleClassNormTwist_zero_localValue, one_mul,
+      Complex.norm_natCast_cpow_of_pos (zero_lt_one.trans (HeightOneSpectrum.one_lt_absNorm v)),
+      Complex.neg_re, norm_one] at hn
+    have he : -z.re = 0 := (Real.rpow_right_inj (zero_lt_one.trans hq) hq.ne').mp
+      (hn.trans (Real.rpow_zero _).symm)
+    exact neg_eq_zero.mp he
+  · simp at hzero
+
+/-- Paper: Theorem 6.3.2.2(1), p. 308, and Theorem 7.4.2.1(1), p. 367.
+A Schwartz–Bergman function on the whole plane that vanishes at each zero of a reciprocal
+partial Euler product to at least its order is that product times a Schwartz–Bergman
+function.
+Deviation: The paper divides by the Euler factors without estimates (ERRATA I200). -/
+theorem schwartzBergman_dvd_reciprocalPartialHeckeEulerProduct (S : Finset V) (φ : B)
+    (hφ : ∀ (z : ℂ) (m : ℕ), (m : ℕ∞) < analyticOrderAt (reciprocalPartialHeckeEulerProduct χ S) z →
+      iteratedDeriv m φ.val z = 0) :
+    ∃ ψ : B, ∀ s, φ.val s = reciprocalPartialHeckeEulerProduct χ S s * ψ.val s := by
+  let R := reciprocalPartialHeckeEulerProduct χ S
+  have hR : Differentiable ℂ R := finiteNuclearity_reciprocalEuler_differentiable χ S
+  have hφd := finiteNuclearity_differentiable φ
+  have hR1 : R 1 ≠ 0 := fun h ↦ by
+    simpa using finiteNuclearity_reciprocalEuler_zero_re χ S h
+  have hle (z : ℂ) (_ : z ∈ univ) : analyticOrderAt R z ≤ analyticOrderAt φ.val z := by
+    have hne : analyticOrderAt R z ≠ ⊤ :=
+      AnalyticOnNhd.analyticOrderAt_ne_top_of_isPreconnected (fun w _ ↦ hR.analyticAt w) isPreconnected_univ
+        (mem_univ 1) (mem_univ z) (by rw [(hR.analyticAt 1).analyticOrderAt_eq_zero.mpr hR1]; simp)
+    obtain ⟨n, hn⟩ := ENat.ne_top_iff_exists.mp hne
+    rw [← hn, natCast_le_analyticOrderAt_iff_iteratedDeriv_eq_zero (hφd.analyticAt z)]
+    intro m hm
+    exact hφ z m (by rw [← hn]; exact_mod_cast hm)
+  obtain ⟨w, hwa, hw⟩ := entire_div_of_order_le R φ.val hR hφd ⟨1, hR1⟩ univ hle
+  have hwd : Differentiable ℂ w := fun z ↦ (hwa z (mem_univ z)).differentiableAt
+  have hmem := schwartzBergman_univ_div_prod_exp S
+    (fun v z ↦ (finiteHeckeEulerFactor χ v z)⁻¹)
+    (fun v _ ↦ finiteHeckeEulerFactor_inv_eq_one_or_exp χ v) φ w hwd
+    (fun z ↦ hw z (mem_univ z))
+  exact ⟨⟨w, hmem⟩, fun s ↦ hw s (mem_univ s)⟩
+
+local notation "Λ(" χ ", " τ ", " hτ ")" => regularizedCompletedHeckeL χ τ hτ
+  (continuedCompletedHeckeL χ) (continuedCompletedHeckeL_spec χ).1 (continuedCompletedHeckeL_spec χ).2
+
+/-- Paper: Theorem 6.3.2.1(1), p. 304, and Situation 7.1.4.1, p. 326.
+The Mellin chart of the zero-moment theta space is injective. -/
+theorem globalPolarThetaMellin_injective : Injective (Z(χ, τ, hτ)) := by
+  rw [injective_iff_map_eq_zero]
+  intro x hx
+  obtain ⟨f, rfl⟩ := Submodule.Quotient.mk_surjective _ x
+  have hz (s : ℂ) : globalIdelicZFunction f.val (ideleClassNormTwist χ s) = 0 := by
+    rw [← ((exists_globalPolarThetaMellin χ τ hτ).choose_spec f s).2, hx]
+    rfl
+  apply (Submodule.Quotient.mk_eq_zero _).mpr
+  by_cases hω : ω(χ) = 1
+  · have ht := (globalConverse_existsUnique_normTwist χ hω).exists
+    obtain ⟨ZB, -, -, hval, -, hker⟩ := globalConverse_normTwist χ ht.choose ht.choose_spec
+    have h0 : ZB f = 0 := Subtype.ext (funext fun s ↦ (hval f s).trans (hz s))
+    have hf : f ∈ ZB.ker := h0
+    rw [hker] at hf
+    have hf' : f ∈ (LinearMap.ker (homogeneousAdelicThetaLinearMap F (ω(χ)))).comap (adelePolarSubspace F).subtype := by
+      rw [hω]
+      exact hf
+    exact hf'
+  · obtain ⟨ZB, hemb, hval, -⟩ := globalConverse_nontrivial χ hω
+    have h0 : ZB ((LinearMap.ker (homogeneousAdelicThetaLinearMap F (ω(χ)))).mkQ f.val) = 0 :=
+      Subtype.ext (funext fun s ↦ (hval f.val s).trans (hz s))
+    have hk := hemb.injective (h0.trans ZB.map_zero.symm)
+    have hK : f.val ∈ LinearMap.ker (homogeneousAdelicThetaLinearMap F (ω(χ))) :=
+      (Submodule.Quotient.mk_eq_zero
+        (LinearMap.ker (homogeneousAdelicThetaLinearMap F (ω(χ))))).mp hk
+    exact LinearMap.mem_ker.mpr (LinearMap.mem_ker.mp hK)
+
+/-- On the trivial norm-one component, the phase of the norm section is the norm-twist
+parameter of the character. -/
+private theorem finiteNuclearity_phase_eq {t : ℝ}
+    (ht : ideleClassNormTwist χ 0 = ideleClassNormTwist (1 : U) ((t : ℂ) * Complex.I)) :
+    (existsUnique_ideleNormSection_character_phase χ τ hτ).exists.choose = t := by
+  have hu := existsUnique_ideleNormSection_character_phase χ τ hτ
+  refine hu.unique hu.exists.choose_spec fun r ↦ ?_
+  have h := DFunLike.congr_fun ht (QuotientGroup.mk (τ r))
+  change (χ (QuotientGroup.mk (τ r)) : ℂ) *
+      ((((ideleClassNorm F (QuotientGroup.mk (τ r)) : ℝ≥0ˣ) : ℝ≥0) : ℝ) : ℂ) ^ (0 : ℂ) =
+    1 * ((((ideleClassNorm F (QuotientGroup.mk (τ r)) : ℝ≥0ˣ) : ℝ≥0) : ℝ) : ℂ) ^
+        ((t : ℂ) * Complex.I) at h
+  have hn : ideleClassNorm F (QuotientGroup.mk (τ r)) = r := hτ r
+  rw [Complex.cpow_zero, mul_one, one_mul, hn] at h
+  exact h
+
+/-- On a nontrivial norm-one component the regularized generator is the completed Hecke
+continuation itself. -/
+private theorem finiteNuclearity_generator_nontrivial (hω : ω(χ) ≠ 1) :
+    ⇑(Λ(χ, τ, hτ)).val = continuedCompletedHeckeL χ := by
+  have hδ : ¬ (χ.toMonoidHom.comp (ideleClassNorm F).ker.subtype = 1) := fun h ↦
+    hω (ContinuousMonoidHom.ext fun x ↦ DFunLike.congr_fun h x)
+  unfold regularizedCompletedHeckeL
+  simp only [hδ, if_false, pow_zero, one_mul]
+  exact toMeromorphicNFOn_eq_self.mpr (continuedCompletedHeckeL_spec χ).1
+
+/-- On the trivial norm-one component the regularized generator is the pole-cancelled
+continuation of Theorem 6.3.2.1, with the same imaginary shift. -/
+private theorem finiteNuclearity_generator_trivial (hω : ω(χ) = 1) {t : ℝ}
+    (ht : ideleClassNormTwist χ 0 = ideleClassNormTwist (1 : U) ((t : ℂ) * Complex.I)) :
+    ⇑(Λ(χ, τ, hτ)).val = toMeromorphicNFOn (fun s ↦
+      (fun s : ℂ ↦ (s + (t : ℂ) * Complex.I) * (1 - s - (t : ℂ) * Complex.I)) s *
+        continuedCompletedHeckeL χ s) univ := by
+  have hδ : χ.toMonoidHom.comp (ideleClassNorm F).ker.subtype = 1 :=
+    MonoidHom.ext fun x ↦ DFunLike.congr_fun hω x
+  have hx := finiteNuclearity_phase_eq χ τ hτ ht
+  unfold regularizedCompletedHeckeL
+  simp only [hδ, if_true, pow_one, hx]
+  rfl
+
+/-- An entire function whose meromorphic order at a point is not positive does not vanish
+there. -/
+private theorem finiteNuclearity_ne_zero_of_order_nonpos {f : ℂ → ℂ} (hf : Differentiable ℂ f)
+    {s : ℂ} (h : meromorphicOrderAt f s ≤ 0) : f s ≠ 0 := fun hz ↦
+  h.not_gt ((tendsto_zero_iff_meromorphicOrderAt_pos (hf.analyticAt s).meromorphicAt).mp
+    (hz ▸ (hf s).continuousAt.continuousWithinAt))
+
+/-- The completed Hecke continuation has no zero on the line of real part zero. Through the
+functional equation this is the absence of zeros of the dual function on the line of real
+part one. -/
+private theorem finiteNuclearity_completedL_order_nonpos {s : ℂ} (hs : s.re = 0) :
+    meromorphicOrderAt (continuedCompletedHeckeL χ) s ≤ 0 := by
+  obtain ⟨ε, hε, hεne, hfe⟩ := completedHeckeL_continuation_functionalEquation χ
+    (continuedCompletedHeckeL χ) (continuedCompletedHeckeL χ⁻¹)
+    (continuedCompletedHeckeL_spec χ).1 (continuedCompletedHeckeL_spec χ).2
+    (continuedCompletedHeckeL_spec χ⁻¹).1 (continuedCompletedHeckeL_spec χ⁻¹).2
+  have hg : AnalyticAt ℂ (fun w : ℂ ↦ 1 - w) s := analyticAt_const.sub analyticAt_id
+  have hg' : deriv (fun w : ℂ ↦ 1 - w) s ≠ 0 := by
+    rw [deriv_const_sub, deriv_id'']
+    norm_num
+  have hcomp := meromorphicOrderAt_comp_of_deriv_ne_zero
+    (f := continuedCompletedHeckeL χ⁻¹) hg hg'
+  have hfun : continuedCompletedHeckeL χ⁻¹ ∘ (fun w : ℂ ↦ 1 - w) =
+      ε * continuedCompletedHeckeL χ := funext fun w ↦ hfe w
+  rw [hfun, meromorphicOrderAt_mul_of_ne_zero (hε.analyticAt s) (hεne s)] at hcomp
+  rw [hcomp]
+  by_contra! hpos
+  have hre : (1 - s).re = 1 := by simp [hs]
+  have := completedHeckeL_continuation_zeros χ⁻¹ (continuedCompletedHeckeL χ⁻¹)
+    (continuedCompletedHeckeL_spec χ⁻¹).1 (continuedCompletedHeckeL_spec χ⁻¹).2
+    (by rw [hre]; norm_num) hpos
+  rw [hre] at this
+  exact lt_irrefl _ this
+
+/-- Paper: Theorem 7.1.4.2(1), pp. 326–327.
+The regularized completed Hecke function does not vanish on the line of real part zero. -/
+theorem regularizedCompletedHeckeL_ne_zero_of_re_eq_zero {s : ℂ} (hs : s.re = 0) :
+    (Λ(χ, τ, hτ)).val s ≠ 0 := by
+  have hdiff : Differentiable ℂ ⇑(Λ(χ, τ, hτ)).val := (Λ(χ, τ, hτ)).property
+  have hL := finiteNuclearity_completedL_order_nonpos χ hs
+  by_cases hω : ω(χ) = 1
+  · have ht := (globalConverse_existsUnique_normTwist χ hω).exists
+    have hx := finiteNuclearity_phase_eq χ τ hτ ht.choose_spec
+    have hδ : χ.toMonoidHom.comp (ideleClassNorm F).ker.subtype = 1 :=
+      MonoidHom.ext fun x ↦ DFunLike.congr_fun hω x
+    by_cases hb : s = -((ht.choose : ℂ) * Complex.I)
+    · have h := (regularizedCompletedHeckeL_ne_zero_at_canceled_poles χ τ hτ
+        (continuedCompletedHeckeL χ) (continuedCompletedHeckeL_spec χ).1
+        (continuedCompletedHeckeL_spec χ).2 hδ).1
+      simp only [hx] at h
+      rw [hb]
+      exact h
+    · apply finiteNuclearity_ne_zero_of_order_nonpos hdiff
+      rw [finiteNuclearity_generator_trivial χ τ hτ hω ht.choose_spec]
+      have hpoly : AnalyticAt ℂ (fun w : ℂ ↦ (w + (ht.choose : ℂ) * Complex.I) *
+          (1 - w - (ht.choose : ℂ) * Complex.I)) s := by fun_prop
+      have hpne : (s + (ht.choose : ℂ) * Complex.I) * (1 - s - (ht.choose : ℂ) * Complex.I) ≠ 0 := by
+        refine mul_ne_zero (fun h ↦ hb (eq_neg_of_add_eq_zero_left h)) fun h ↦ ?_
+        have := congrArg Complex.re h
+        simp [hs] at this
+      have hmer : MeromorphicOn (fun w ↦ (fun w : ℂ ↦ (w + (ht.choose : ℂ) * Complex.I) *
+          (1 - w - (ht.choose : ℂ) * Complex.I)) w * continuedCompletedHeckeL χ w) univ :=
+        fun w _ ↦ (by fun_prop : AnalyticAt ℂ (fun w : ℂ ↦ (w + (ht.choose : ℂ) * Complex.I) *
+          (1 - w - (ht.choose : ℂ) * Complex.I)) w).meromorphicAt.mul
+            ((continuedCompletedHeckeL_spec χ).1 (mem_univ w)).meromorphicAt
+      rw [meromorphicOrderAt_toMeromorphicNFOn hmer (mem_univ s)]
+      exact (meromorphicOrderAt_mul_of_ne_zero hpoly hpne).le.trans hL
+  · apply finiteNuclearity_ne_zero_of_order_nonpos hdiff
+    rw [finiteNuclearity_generator_nontrivial χ τ hτ hω]
+    exact hL
+
+/-- Paper: Theorem 6.3.2.1(1), p. 304, and Theorem 7.1.4.2(1), pp. 326–327.
+The image of the Mellin chart consists of the Schwartz–Bergman functions that are
+entire multiples of the regularized completed Hecke function. -/
+theorem globalPolarThetaMellin_range (φ : B) :
+    φ ∈ Set.range (Z(χ, τ, hτ)) ↔
+      ∃ u : ℂ → ℂ, Differentiable ℂ u ∧ ∀ s, φ.val s = (Λ(χ, τ, hτ)).val s * u s := by
+  have hZ (f : P) (s : ℂ) : ((Z(χ, τ, hτ)) mkΘ(χ, f)).val s =
+      globalIdelicZFunction f.val (ideleClassNormTwist χ s) :=
+    ((exists_globalPolarThetaMellin χ τ hτ).choose_spec f s).2
+  by_cases hω : ω(χ) = 1
+  · have ht := (globalConverse_existsUnique_normTwist χ hω).exists
+    obtain ⟨ZB, -, -, hval, hrange, -⟩ := globalConverse_normTwist χ ht.choose ht.choose_spec
+    have hgen := finiteNuclearity_generator_trivial χ τ hτ hω ht.choose_spec
+    constructor
+    · rintro ⟨x, rfl⟩
+      obtain ⟨f, rfl⟩ := Submodule.Quotient.mk_surjective _ x
+      have hmem : ZB f ∈ Set.range ZB := ⟨f, rfl⟩
+      rw [hrange] at hmem
+      obtain ⟨u, hu, hus⟩ := hmem
+      refine ⟨u, hu, fun s ↦ ?_⟩
+      rw [hZ, ← hval, hus s, hgen]
+    · rintro ⟨u, hu, hφ⟩
+      have hmem : φ ∈ Set.range ZB := by
+        rw [hrange]
+        exact ⟨u, hu, fun s ↦ (hφ s).trans (by rw [hgen])⟩
+      obtain ⟨f, rfl⟩ := hmem
+      exact ⟨mkΘ(χ, f), Subtype.ext (funext fun s ↦ (hZ f s).trans (hval f s).symm)⟩
+  · obtain ⟨ZB, -, hval, hrange⟩ := globalConverse_nontrivial χ hω
+    have hgen := finiteNuclearity_generator_nontrivial χ τ hτ hω
+    let K := LinearMap.ker (homogeneousAdelicThetaLinearMap F (ω(χ)))
+    constructor
+    · rintro ⟨x, rfl⟩
+      obtain ⟨f, rfl⟩ := Submodule.Quotient.mk_surjective _ x
+      have hmem : ZB (K.mkQ f.val) ∈ Set.range ZB := ⟨_, rfl⟩
+      rw [hrange] at hmem
+      obtain ⟨u, hu, hus⟩ := hmem
+      refine ⟨u, hu, fun s ↦ ?_⟩
+      rw [hZ, ← hval, hus s, hgen]
+    · rintro ⟨u, hu, hφ⟩
+      have hmem : φ ∈ Set.range ZB := by
+        rw [hrange]
+        exact ⟨u, hu, fun s ↦ (hφ s).trans (by rw [hgen])⟩
+      obtain ⟨q, rfl⟩ := hmem
+      obtain ⟨f, hf⟩ := (globalConverse_nontrivial_exact (ω(χ)) hω).surjective q
+      refine ⟨mkΘ(χ, f), Subtype.ext (funext fun s ↦ ?_)⟩
+      rw [hZ, ← hval, ← hf]
+      rfl
+
+/-- A quotient `u / R` is entire when `R * ψ = Λ * u` and `Λ` does not vanish at the zeros
+of `R`. On a neighbourhood of a zero of `R` it agrees with `ψ / Λ`. -/
+private theorem finiteNuclearity_entire_quotient {R G ψ u : ℂ → ℂ}
+    (hR : Differentiable ℂ R) (hG : Differentiable ℂ G) (hψ : Differentiable ℂ ψ)
+    (hu : Differentiable ℂ u)
+    (hGne : ∀ z, R z = 0 → G z ≠ 0) (heq : ∀ s, R s * ψ s = G s * u s) :
+    ∃ w : ℂ → ℂ, Differentiable ℂ w ∧ ∀ s, ψ s = G s * w s := by
+  classical
+  let w : ℂ → ℂ := fun s ↦ if R s = 0 then ψ s / G s else u s / R s
+  -- Off the zeros of `R` both formulas agree wherever `G` is nonzero.
+  have hloc (s : ℂ) : ∀ᶠ z in 𝓝 s, (G s ≠ 0 → w z = ψ z / G z) ∧ (R s ≠ 0 → w z = u z / R z) := by
+    have h1 : ∀ᶠ z in 𝓝 s, G s ≠ 0 → w z = ψ z / G z := by
+      by_cases hGs : G s = 0
+      · exact Filter.Eventually.of_forall fun _ h ↦ absurd hGs h
+      · filter_upwards [(hG s).continuousAt.eventually_ne hGs] with z hz _
+        by_cases hRz : R z = 0
+        · simp only [w, if_pos hRz]
+        · simp only [w, if_neg hRz]
+          rw [div_eq_div_iff hRz hz, mul_comm (u z), ← heq z, mul_comm]
+    have h2 : ∀ᶠ z in 𝓝 s, R s ≠ 0 → w z = u z / R z := by
+      by_cases hRs : R s = 0
+      · exact Filter.Eventually.of_forall fun _ h ↦ absurd hRs h
+      · filter_upwards [(hR s).continuousAt.eventually_ne hRs] with z hz _
+        simp only [w, if_neg hz]
+    filter_upwards [h1, h2] with z hz1 hz2
+    exact ⟨hz1, hz2⟩
+  refine ⟨w, fun s ↦ ?_, fun s ↦ ?_⟩
+  · by_cases hs : R s = 0
+    · have hGs := hGne s hs
+      apply ((hψ s).div (hG s) hGs).congr_of_eventuallyEq
+      filter_upwards [hloc s] with z hz
+      exact hz.1 hGs
+    · apply ((hu s).div (hR s) hs).congr_of_eventuallyEq
+      filter_upwards [hloc s] with z hz
+      exact hz.2 hs
+  · by_cases hs : R s = 0
+    · have hGs := hGne s hs
+      simp only [w, if_pos hs]
+      field_simp
+    · simp only [w, if_neg hs]
+      rw [mul_div_assoc', ← heq s, mul_div_cancel_left₀ _ hs]
+
+/-- Paper: Theorem 7.4.2.1(1), p. 367.
+A zero-moment theta class lies in the principal-value denominator exactly when all of its
+finite orbital jets vanish.
+Deviation: The paper deduces closedness from Theorem 7.1.4.3, which does not give it. -/
+theorem mem_finiteNuclearityDenominator_iff (p : HeightOneSpectrum (𝓞 ℚ)) (x : Θ₀(χ)) :
+    x ∈ finiteNuclearityDenominator χ p ↔ ∀ j, finiteNuclearityJet χ τ hτ p j x = 0 := by
+  refine ⟨fun hx j ↦ finiteNuclearityJet_eq_zero_of_mem χ τ hτ p j hx, fun hx ↦ ?_⟩
+  let R := reciprocalPartialHeckeEulerProduct χ (Sₚ(p))
+  let φ := (Z(χ, τ, hτ)) x
+  have hR : Differentiable ℂ R := finiteNuclearity_reciprocalEuler_differentiable χ (Sₚ(p))
+  -- The Mellin transform vanishes at each zero of `R` to at least its order.
+  have hφ (z : ℂ) (m : ℕ) (hm : (m : ℕ∞) < analyticOrderAt R z) : iteratedDeriv m φ.val z = 0 := by
+    have h := hx ⟨(z, m), hm⟩
+    rwa [finiteNuclearityJet_apply] at h
+  obtain ⟨ψ, hψ⟩ := schwartzBergman_dvd_reciprocalPartialHeckeEulerProduct χ (Sₚ(p)) φ hφ
+  obtain ⟨u, hu, hφu⟩ := (globalPolarThetaMellin_range χ τ hτ φ).mp ⟨x, rfl⟩
+  obtain ⟨w, hw, hψw⟩ := finiteNuclearity_entire_quotient hR (Λ(χ, τ, hτ)).property
+    (finiteNuclearity_differentiable ψ) hu
+    (fun z hz ↦ regularizedCompletedHeckeL_ne_zero_of_re_eq_zero χ τ hτ
+      (finiteNuclearity_reciprocalEuler_zero_re χ (Sₚ(p)) hz))
+    (fun s ↦ (hψ s).symm.trans (hφu s))
+  obtain ⟨y, hy⟩ := (globalPolarThetaMellin_range χ τ hτ ψ).mpr ⟨w, hw, hψw⟩
+  obtain ⟨f, rfl⟩ := Submodule.Quotient.mk_surjective _ y
+  obtain ⟨f₀, rfl⟩ := Submodule.Quotient.mk_surjective _ x
+  have hx' : mkΘ(χ, f₀) = mkΘ(χ, ⟨adelePrincipalValue F (Sₚ(p)) f.val,
+      nuclearityPrincipalValue_mem_polar (F := F) p f⟩) := by
+    apply globalPolarThetaMellin_injective χ τ hτ
+    apply Subtype.ext
+    funext s
+    rw [finiteNuclearity_mellin_principalValue χ τ hτ p f s, hy]
+    exact hψ s
+  have hz := (finiteNuclearityQuotient_mk_eq_zero χ p f₀).mpr ⟨f, hx'⟩
+  rw [Submodule.mkQ_apply] at hz
+  exact (Submodule.Quotient.mk_eq_zero _).mp hz
+
+/-- On the quotient of a nuclear space by a closed subspace, all nuclear presentations of
+one operator have the same trace. -/
+private theorem finiteNuclearity_trace_unique {E : Type*} [AddCommGroup E] [Module ℂ E]
+    [TopologicalSpace E] [IsTopologicalAddGroup E] (hE : IsNuclearTVS E) (D : Submodule ℂ E)
+    (hD : IsClosed (D : Set E)) :
+    letI : UniformSpace (E ⧸ D) := IsTopologicalAddGroup.rightUniformSpace (E ⧸ D)
+    ∀ (T : E ⧸ D →L[ℂ] E ⧸ D) (r₀ r : NuclearPresentation T) (a : ℂ),
+      HasSum (fun n ↦ r₀.coeff n * r₀.functional n (r₀.vector n).val) a →
+      HasSum (fun n ↦ r.coeff n * r.functional n (r.vector n).val) a := by
+  letI : UniformSpace (E ⧸ D) := IsTopologicalAddGroup.rightUniformSpace (E ⧸ D)
+  intro T r₀ r a h₀
+  haveI : IsUniformAddGroup (E ⧸ D) := isUniformAddGroup_of_addCommGroup
+  haveI : IsClosed (D : Set E) := hD
+  haveI : T2Space (E ⧸ D) := inferInstance
+  haveI : PolynormableSpace ℂ (E ⧸ D) := (isNuclearTVS_quotient hE D).2.1
+  obtain ⟨b, hb, -⟩ := exists_nuclearTrace_hasSum
+    (dense_finiteRank_of_isNuclearTVS (E ⧸ D) (isNuclearTVS_quotient hE D)) T
+    ((isNuclearOperator_iff_nonempty_presentation T).mpr ⟨r₀⟩)
+  have hu : b = a := (hb r₀).2.unique h₀
+  rw [← hu]
+  exact (hb r).2
+
+/-- Paper: Theorem 7.4.2.1(2), p. 367.
+The trace series over the zeros of the reciprocal partial Euler product, weighted by their
+orders, converges absolutely. -/
+theorem finiteNuclearity_term_summable (p : HeightOneSpectrum (𝓞 ℚ)) (φ : 𝒟) :
+    Summable (fun z : {z : ℂ // 0 < analyticOrderAt
+        (reciprocalPartialHeckeEulerProduct χ (Sₚ(p))) z} ↦
+      ‖((analyticOrderAt (reciprocalPartialHeckeEulerProduct χ (Sₚ(p))) z.val).toNat : ℂ) *
+        nuclearityTestMellin χ φ z.val‖) := by
+  sorry
+
+/-- Paper: Theorem 7.4.2.1(2), p. 367.
+The operator induced by the regularized action on the finite-place quotient has a nuclear
+presentation with rapidly decreasing coefficients whose trace is the sum of the Mellin
+transform of the test function over the zeros of the reciprocal Euler product, counted with
+order. -/
+theorem exists_finiteNuclearity_presentation (p : HeightOneSpectrum (𝓞 ℚ)) (φ : 𝒟) :
+    let D := finiteNuclearityDenominator χ p
+    let Q := Θ₀(χ) ⧸ D
+    letI : UniformSpace Q := IsTopologicalAddGroup.rightUniformSpace Q
+    let R := reciprocalPartialHeckeEulerProduct χ (Sₚ(p))
+    ∀ T : Q →L[ℂ] Q, (∀ f : Θ₀(χ), T (D.mkQ f) = D.mkQ (Aθ(φ) f)) →
+      ∃ r₀ : NuclearPresentation T,
+        (∀ k : ℕ, ∃ C : ℝ, ∀ n : ℕ, ‖r₀.coeff n‖ * ((n : ℝ) + 1) ^ k ≤ C) ∧
+        HasSum (fun n ↦ r₀.coeff n * r₀.functional n (r₀.vector n).val)
+          (∑' z : {z : ℂ // 0 < analyticOrderAt R z},
+            ((analyticOrderAt R z.val).toNat : ℂ) * nuclearityTestMellin χ φ z.val) := by
+  sorry
+
 /-- Paper: Theorem 7.4.2.1(1), p. 367.
 The finite-place denominator is closed and is stable under each regularized action. -/
 theorem finiteNuclearityDenominator_closed_invariant (p : HeightOneSpectrum (𝓞 ℚ)) (φ : 𝒟) :
     let D := finiteNuclearityDenominator χ p
-    IsClosed (D : Set (Θ₀(χ))) ∧ Set.MapsTo (Aθ(φ)) (D : Set (Θ₀(χ))) D := by sorry
+    IsClosed (D : Set (Θ₀(χ))) ∧ Set.MapsTo (Aθ(φ)) (D : Set (Θ₀(χ))) D := by
+  intro D
+  have hmem := mem_finiteNuclearityDenominator_iff χ τ hτ p
+  constructor
+  · rw [show (D : Set (Θ₀(χ))) = ⋂ j, (finiteNuclearityJet χ τ hτ p j) ⁻¹' {0} from
+      Set.ext fun x ↦ by rw [mem_iInter]; exact hmem x]
+    exact isClosed_iInter fun j ↦
+      isClosed_singleton.preimage (finiteNuclearityJet χ τ hτ p j).continuous
+  · intro x hx
+    apply (hmem _).mpr
+    intro j
+    let v := (Z(χ, τ, hτ)) x
+    have hprod : ((Z(χ, τ, hτ)) (Aθ(φ) x)).val = nuclearityTestMellin χ φ * v.val :=
+      funext ((exists_polarThetaNuclearityAction χ τ hτ φ).choose_spec.1 x)
+    rw [finiteNuclearityJet_apply, hprod, iteratedDeriv_mul
+      ((archNuclearityDenominator_closed_invariant_multiplier χ φ).contDiff.contDiffAt)
+      (finiteNuclearity_differentiable v).contDiff.contDiffAt]
+    apply Finset.sum_eq_zero
+    intro i _
+    have hk := (hmem x).mp hx ⟨(j.val.1, j.val.2 - i),
+      lt_of_le_of_lt (by exact_mod_cast Nat.sub_le _ _) j.property⟩
+    rw [finiteNuclearityJet_apply] at hk
+    exact mul_eq_zero_of_right _ hk
 
 -- TODO(paper-gap): The cited §7.1.4.3 concerns the entire comparison space.
 -- To apply the rapid-decay argument on this quotient, one needs bounds in its
@@ -637,7 +1178,26 @@ theorem finiteNuclearity_trace (p : HeightOneSpectrum (𝓞 ℚ)) (φ : 𝒟) :
       (∀ f : Θ₀(χ), T (D.mkQ f) = D.mkQ (Aθ(φ) f)) ∧
       IsStronglyNuclearOperator T ∧ Summable (fun z ↦ ‖term z‖) ∧
       ∀ r : NuclearPresentation T,
-        HasSum (fun n ↦ r.coeff n * r.functional n (r.vector n).val) (∑' z, term z) := by sorry
+        HasSum (fun n ↦ r.coeff n * r.functional n (r.vector n).val) (∑' z, term z) := by
+  intro D Q R zeros term
+  letI : UniformSpace Q := IsTopologicalAddGroup.rightUniformSpace Q
+  have hD := finiteNuclearityDenominator_closed_invariant χ τ hτ p φ
+  let T₀ : Q →ₗ[ℂ] Q := D.mapQ D (Aθ(φ)).toLinearMap fun x hx ↦ hD.2 hx
+  have hT₀ : Continuous T₀ := by
+    apply (Submodule.isQuotientMap_mkQ D).continuous_iff.mpr
+    exact (Submodule.isQuotientMap_mkQ D).continuous.comp (Aθ(φ)).continuous
+  let T : Q →L[ℂ] Q := ⟨T₀, hT₀⟩
+  have hT (x : Θ₀(χ)) : T (D.mkQ x) = D.mkQ (Aθ(φ) x) := rfl
+  have hΘ : IsNuclearTVS.{0} (Θ₀(χ)) := by
+    have hPiClosed : IsClosed ((Π(χ)) : Set P) :=
+      (homogeneousAdelicTheta_ker_isClosed (F := F) (ω(χ))).preimage continuous_subtype_val
+    haveI := hPiClosed
+    exact isNuclearTVS_quotient
+      (isNuclearTVS_submodule (adeleSchwartz_nuclear (F := F)).2 P) (Π(χ))
+  have hsum : Summable (fun z ↦ ‖term z‖) := finiteNuclearity_term_summable χ p φ
+  obtain ⟨r₀, hr₀, htr⟩ := exists_finiteNuclearity_presentation χ τ hτ p φ T hT
+  exact ⟨T, hT, ⟨r₀, hr₀⟩, hsum, fun r ↦
+    finiteNuclearity_trace_unique hΘ D hD.1 T r₀ r _ htr⟩
 
 end Orbital
 
@@ -1437,26 +1997,6 @@ theorem archNuclearityStrongDual_finest :
     (p.trans (e.symm.arrowCongr (ContinuousLinearEquiv.refl ℂ ℂ)))
 
 local notation "Aθ(" φ ")" => (exists_polarThetaNuclearityAction χ τ hτ φ).choose
-
-/-- Absolute convergence on every norm line makes the Mellin multiplier entire. -/
-private theorem archNuclearityDenominator_closed_invariant_multiplier
-    (χ : PontryaginDual (IdeleClassGroup (𝓞 F) F)) (φ : 𝒟) :
-    Differentiable ℂ (nuclearityTestMellin χ φ) := by
-  let : BorelSpace C𝔽 := ⟨rfl⟩
-  let n := fun g : C𝔽 ↦ ((ideleClassNorm F g).val : ℝ)
-  let f := fun g : C𝔽 ↦ φ.val g * (χ g : ℂ)
-  have hn : Continuous n :=
-    NNReal.continuous_coe.comp (Units.continuous_val.comp (isProperMap_ideleClassNorm F).continuous)
-  have heq (s : ℂ) (g : C𝔽) : f g * (n g : ℂ) ^ s = testIntegrand(χ, φ, s) g :=
-    mul_assoc _ _ _
-  have h := analyticOnNhd_integral_mul_cpow_of_integrable μ𝔽 f n hn.measurable
-    (fun g ↦ NNReal.coe_pos.mpr (Units.zero_lt _)) isOpen_univ
-    (fun s _ ↦ by simpa only [heq] using (nuclearityTestMellin_integrable χ φ).1 s)
-  have hfun : nuclearityTestMellin χ φ = fun s ↦ ∫ g, f g * (n g : ℂ) ^ s ∂μ𝔽 := by
-    funext s
-    simp only [heq, nuclearityTestMellin]
-  rw [hfun]
-  exact fun s ↦ (h s (mem_univ _)).differentiableAt
 
 /-- Paper: Theorem 7.4.3.2(1), p. 372.
 The archimedean-flat theta denominator is a closed subspace stable under the
