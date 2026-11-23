@@ -924,21 +924,28 @@ abbrev FiniteNuclearityJetIndex (p : HeightOneSpectrum (𝓞 ℚ)) :=
   {j : ℂ × ℕ // (j.2 : ℕ∞) < analyticOrderAt (reciprocalPartialHeckeEulerProduct χ (Sₚ(p))) j.1}
 
 /-- Paper: Theorem 7.4.2.1(2), p. 367, with the jets of Theorem 7.1.4.3, p. 331.
+Each derivative of the Mellin transform at a point is a continuous functional on the
+zero-moment theta space. -/
+theorem exists_finiteNuclearityJet (z : ℂ) (m : ℕ) :
+    ∃ J : StrongDual ℂ (Θ₀(χ)), ∀ x, J x = iteratedDeriv m ((Z(χ, τ, hτ)) x).val z := by
+  refine ⟨((entireJet z m).comp schwartzBergmanEntireInclusion).comp (Z(χ, τ, hτ)), fun x ↦ ?_⟩
+  rw [ContinuousLinearMap.comp_apply, ContinuousLinearMap.comp_apply, entireJet_apply]
+  exact congrArg (fun g : ℂ → ℂ ↦ iteratedDeriv m g z)
+    (funext (schwartzBergmanEntireInclusion_apply _))
+
+/-- Paper: Theorem 7.4.2.1(2), p. 367, with the jets of Theorem 7.1.4.3, p. 331.
 The finite orbital jet differentiates the Mellin transform of a zero-moment theta class
 at a zero of the reciprocal partial Euler product. -/
 def finiteNuclearityJet (p : HeightOneSpectrum (𝓞 ℚ)) (j : FiniteNuclearityJetIndex χ p) :
     StrongDual ℂ (Θ₀(χ)) :=
-  ((entireJet j.val.1 j.val.2).comp schwartzBergmanEntireInclusion).comp (Z(χ, τ, hτ))
+  (exists_finiteNuclearityJet χ τ hτ j.val.1 j.val.2).choose
 
 /-- Paper: Theorem 7.4.2.1(2), p. 367.
 A finite orbital jet is the iterated derivative of the Mellin transform at the zero. -/
 theorem finiteNuclearityJet_apply (p : HeightOneSpectrum (𝓞 ℚ)) (j : FiniteNuclearityJetIndex χ p)
     (x : Θ₀(χ)) :
-    finiteNuclearityJet χ τ hτ p j x = iteratedDeriv j.val.2 ((Z(χ, τ, hτ)) x).val j.val.1 := by
-  unfold finiteNuclearityJet
-  rw [ContinuousLinearMap.comp_apply, ContinuousLinearMap.comp_apply, entireJet_apply]
-  exact congrArg (fun g : ℂ → ℂ ↦ iteratedDeriv j.val.2 g j.val.1)
-    (funext (schwartzBergmanEntireInclusion_apply _))
+    finiteNuclearityJet χ τ hτ p j x = iteratedDeriv j.val.2 ((Z(χ, τ, hτ)) x).val j.val.1 :=
+  (exists_finiteNuclearityJet χ τ hτ j.val.1 j.val.2).choose_spec x
 
 /-- A Schwartz–Bergman function on the whole plane is entire. -/
 private theorem finiteNuclearity_differentiable (v : B) : Differentiable ℂ v.val := fun z ↦
