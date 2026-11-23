@@ -170,10 +170,42 @@ section Convolution
 
 variable (a : ℝ) {l r s : ℝ} (hI : l ≤ r) (hs : 0 ≤ s)
 
+/-- A Pettis integral of translates of a vector in a closed invariant subspace of a
+Hilbert space stays in that subspace, since every vector orthogonal to it kills the integrand. -/
+private theorem hardySobolevTestAction_preserves_globalTheta_aux {X V : Type*}
+    [Group X] [MeasurableSpace X] (μ : Measure X) [NormedAddCommGroup V]
+    [InnerProductSpace ℂ V] [CompleteSpace V] (K : Submodule ℂ V) (hK : IsClosed (K : Set V))
+    (τ : X →* (V →L[ℂ] V)) (hτ : ∀ g, ∀ v ∈ K, τ g v ∈ K) {ψ : X → ℂ} {u b : V}
+    (hu : u ∈ K) (hb : HasPettisIntegral (.positive μ) (fun g ↦ ψ g • τ g u) b) : b ∈ K := by
+  have : CompleteSpace K := hK.completeSpace_coe
+  rw [← K.orthogonal_orthogonal]
+  intro w hw
+  have hδ := congrArg
+    (fun z : PettisWeakCompletion V ↦ (show Module.Dual ℂ (StrongDual ℂ V) from z)
+      (innerSL ℂ w)) hb.2
+  change innerSL ℂ w b = ∫ g, innerSL ℂ w (ψ g • τ g u) ∂μ at hδ
+  rw [innerSL_apply_apply] at hδ
+  rw [hδ]
+  refine integral_eq_zero_of_ae (.of_forall fun g ↦ ?_)
+  change innerSL ℂ w (ψ g • τ g u) = 0
+  rw [innerSL_apply_apply]
+  exact (K.mem_orthogonal' w).mp hw _ (K.smul_mem _ (hτ g u hu))
+
 /-- Paper: (10.3.1.2), p. 448, and (10.3.2.2), p. 454. Convolution with a
 test preserves the closed weighted theta subspace, so it descends to the quotient. -/
 theorem hardySobolevTestAction_preserves_globalTheta (φ : BruhatCompactSupport C𝔽) :
-    Θ(a, hI, hs) ≤ ((Θ(a, hI, hs)).mkQL.comp (testAction(l, r, s, hI, hs) φ)).ker := by sorry
+    Θ(a, hI, hs) ≤ ((Θ(a, hI, hs)).mkQL.comp (testAction(l, r, s, hI, hs) φ)).ker := by
+  intro v hv
+  obtain ⟨ρ, hρ, -, -⟩ := exists_globalThetaSobolevAction (F := F) a hI hs
+  have hinv : ∀ g, ∀ w ∈ Θ(a, hI, hs), hardySobolevTranslation μ𝔽 m𝔽 l r s hI hs g w ∈
+      Θ(a, hI, hs) := fun g w hw ↦ by
+    rw [← hρ g ⟨w, hw⟩]
+    exact (ρ g ⟨w, hw⟩).property
+  have hmem := hardySobolevTestAction_preserves_globalTheta_aux μ𝔽 (Θ(a, hI, hs))
+    (Submodule.isClosed_topologicalClosure _) (hardySobolevTranslation μ𝔽 m𝔽 l r s hI hs)
+    hinv hv (bruhatRegularizedAction_apply μ𝔽 (hardySobolevTranslation μ𝔽 m𝔽 l r s hI hs)
+      (exists_hardySobolevTranslation μ𝔽 m𝔽 l r s hI hs).choose_spec.2 φ v)
+  exact (Submodule.Quotient.mk_eq_zero (Θ(a, hI, hs))).mpr hmem
 
 /-- Paper: (10.3.1.2), p. 448, and (10.3.2.2), p. 454. The spectral convolution
 operator is the descended Hardy–Sobolev test action. -/
