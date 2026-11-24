@@ -1677,35 +1677,6 @@ theorem finiteNuclearityJet_eq_zero_of_mem (p : HeightOneSpectrum (𝓞 ℚ))
   | add y z _ _ hy hz => rw [map_add, hy, hz, add_zero]
   | smul a y _ hy => rw [map_smul, hy, smul_zero]
 
-/-- Paper: Theorem 7.4.2.1(2), p. 367, and the proof of Theorem 7.4.1.1(2), p. 367.
-Every derivative of the Mellin transform of a compactly supported Bruhat test decays
-faster than any power of the height along each vertical line.
-Deviation: The printed proof uses this decay without proving it. -/
-theorem nuclearityTestMellin_iteratedDeriv_rapidDecay (φ : 𝒟) (σ : ℝ) (i N : ℕ) :
-    ∃ C : ℝ, ∀ t : ℝ,
-      (1 + |t|) ^ N * ‖iteratedDeriv i (nuclearityTestMellin χ φ) (σ + t * Complex.I)‖ ≤ C := by
-  sorry
-
-/-- Paper: Theorem 7.4.2.1(2), p. 367.
-For each power of the height, the finite orbital jets weighted by that power are
-equicontinuous at zero.
-Deviation: This is the bound on the functionals that ERRATA I247 records as missing. -/
-theorem finiteNuclearityJet_equicontinuousAt (p : HeightOneSpectrum (𝓞 ℚ)) (N : ℕ) :
-    EquicontinuousAt (fun (j : FiniteNuclearityJetIndex χ p) (x : Θ₀(χ)) ↦
-      ((1 + ‖j.val.1‖) ^ N : ℂ) * finiteNuclearityJet χ τ hτ p j x) 0 := by
-  sorry
-
-/-- Paper: Theorem 7.4.2.1(2), p. 367.
-The finite orbital jets have a biorthogonal family of zero-moment theta classes that
-grows at most polynomially in the height in every neighbourhood of zero.
-Deviation: This is the bound on the vectors that ERRATA I247 records as missing. -/
-theorem exists_finiteNuclearityJet_biorthogonal (p : HeightOneSpectrum (𝓞 ℚ)) :
-    ∃ e : FiniteNuclearityJetIndex χ p → Θ₀(χ),
-      (∀ i j, finiteNuclearityJet χ τ hτ p i (e j) = if i = j then 1 else 0) ∧
-      ∀ W ∈ 𝓝 (0 : Θ₀(χ)), ∃ N : ℕ, ∃ c : ℝ, 0 < c ∧
-        ∀ j, (((c * (1 + ‖j.val.1‖) ^ N : ℝ) : ℂ)⁻¹ • e j) ∈ W := by
-  sorry
-
 /-- Zeros of a reciprocal partial Euler product lie on the line of real part zero. -/
 private theorem finiteNuclearity_reciprocalEuler_zero_re (S : Finset V) {z : ℂ}
     (hz : reciprocalPartialHeckeEulerProduct χ S z = 0) : z.re = 0 := by
@@ -1759,34 +1730,29 @@ theorem schwartzBergman_dvd_reciprocalPartialHeckeEulerProduct (S : Finset V) (�
 local notation "Λ(" χ ", " τ ", " hτ ")" => regularizedCompletedHeckeL χ τ hτ
   (continuedCompletedHeckeL χ) (continuedCompletedHeckeL_spec χ).1 (continuedCompletedHeckeL_spec χ).2
 
-/-- Paper: Theorem 6.3.2.1(1), p. 304, and Situation 7.1.4.1, p. 326.
-The Mellin chart of the zero-moment theta space is injective. -/
-theorem globalPolarThetaMellin_injective : Injective (Z(χ, τ, hτ)) := by
-  rw [injective_iff_map_eq_zero]
-  intro x hx
-  obtain ⟨f, rfl⟩ := Submodule.Quotient.mk_surjective _ x
-  have hz (s : ℂ) : globalIdelicZFunction f.val (ideleClassNormTwist χ s) = 0 := by
-    rw [← ((exists_globalPolarThetaMellin χ τ hτ).choose_spec f s).2, hx]
+/-- The polar Mellin transform separates homogeneous theta classes by the two
+global converse theorems, using their respective kernels. -/
+private theorem finiteNuclearity_mellin_injective : Injective (Z(χ, τ, hτ)) := by
+  apply LinearMap.ker_eq_bot.mp
+  refine (Submodule.eq_bot_iff _).mpr fun x hx ↦ ?_
+  obtain ⟨f, rfl⟩ := Submodule.Quotient.mk_surjective (Π(χ)) x
+  have hZ : (Z(χ, τ, hτ)) (mkΘ(χ, f)) = 0 := hx
+  have hf (s : ℂ) : globalIdelicZFunction f.val (ideleClassNormTwist χ s) = 0 := by
+    rw [← ((exists_globalPolarThetaMellin χ τ hτ).choose_spec f s).2, hZ]
     rfl
-  apply (Submodule.Quotient.mk_eq_zero _).mpr
+  apply (Submodule.Quotient.mk_eq_zero (Π(χ))).mpr
   by_cases hω : ω(χ) = 1
-  · have ht := (globalConverse_existsUnique_normTwist χ hω).exists
-    obtain ⟨ZB, -, -, hval, -, hker⟩ := globalConverse_normTwist χ ht.choose ht.choose_spec
-    have h0 : ZB f = 0 := Subtype.ext (funext fun s ↦ (hval f s).trans (hz s))
-    have hf : f ∈ ZB.ker := h0
-    rw [hker] at hf
-    have hf' : f ∈ (LinearMap.ker (homogeneousAdelicThetaLinearMap F (ω(χ)))).comap (adelePolarSubspace F).subtype := by
-      rw [hω]
-      exact hf
-    exact hf'
-  · obtain ⟨ZB, hemb, hval, -⟩ := globalConverse_nontrivial χ hω
-    have h0 : ZB ((LinearMap.ker (homogeneousAdelicThetaLinearMap F (ω(χ)))).mkQ f.val) = 0 :=
-      Subtype.ext (funext fun s ↦ (hval f.val s).trans (hz s))
-    have hk := hemb.injective (h0.trans ZB.map_zero.symm)
-    have hK : f.val ∈ LinearMap.ker (homogeneousAdelicThetaLinearMap F (ω(χ))) :=
-      (Submodule.Quotient.mk_eq_zero
-        (LinearMap.ker (homogeneousAdelicThetaLinearMap F (ω(χ))))).mp hk
-    exact LinearMap.mem_ker.mpr (LinearMap.mem_ker.mp hK)
+  · obtain ⟨t, ht⟩ := (globalConverse_existsUnique_normTwist χ hω).exists
+    obtain ⟨M, _, _, hM, _, hker⟩ := globalConverse_normTwist χ t ht
+    have hm : f ∈ M.ker := specDenom_B_ext (M f) 0 (fun s ↦ (hM f s).trans (hf s))
+    have hK := congrArg (fun ψ ↦ (homogeneousAdelicThetaLinearMap F ψ).ker.comap (P).subtype) hω
+    exact (hK.trans hker.symm).ge hm
+  · obtain ⟨M, hM, hval, _⟩ := globalConverse_nontrivial χ hω
+    let K := (homogeneousAdelicThetaLinearMap F (ω(χ))).ker
+    have hfM : M (K.mkQ f.val) = 0 :=
+      specDenom_B_ext _ 0 (fun s ↦ (hval f.val s).trans (hf s))
+    change f.val ∈ K
+    exact (Submodule.Quotient.mk_eq_zero K).mp (hM.injective (hfM.trans M.map_zero.symm))
 
 /-- On the trivial norm-one component, the phase of the norm section is the norm-twist
 parameter of the character. -/
@@ -2015,7 +1981,7 @@ theorem mem_finiteNuclearityDenominator_iff (p : HeightOneSpectrum (𝓞 ℚ)) (
   obtain ⟨f₀, rfl⟩ := Submodule.Quotient.mk_surjective _ x
   have hx' : mkΘ(χ, f₀) = mkΘ(χ, ⟨adelePrincipalValue F (Sₚ(p)) f.val,
       nuclearityPrincipalValue_mem_polar (F := F) p f⟩) := by
-    apply globalPolarThetaMellin_injective χ τ hτ
+    apply finiteNuclearity_mellin_injective χ τ hτ
     apply Subtype.ext
     funext s
     rw [finiteNuclearity_mellin_principalValue χ τ hτ p f s, hy]
@@ -2046,6 +2012,159 @@ private theorem finiteNuclearity_trace_unique {E : Type*} [AddCommGroup E] [Modu
   rw [← hu]
   exact (hb r).2
 
+open scoped FourierTransform SchwartzMap in
+/-- On the imaginary axis, the test Mellin transform is the Fourier transform of a
+Schwartz function obtained by averaging along the norm-one classes. -/
+private theorem finiteNuclearity_testMellin_fourier (φ : 𝒟) :
+    ∃ f : 𝓢(ℝ, ℂ), ∀ t : ℝ,
+      𝓕 f (-(2 * Real.pi)⁻¹ * t) = nuclearityTestMellin χ φ ((t : ℂ) * Complex.I) := by
+  let : BorelSpace C𝔽 := ⟨rfl⟩
+  let K := (ideleClassNorm F).ker
+  let ν := normOneIdeleClassTamagawaMeasure F
+  let σ (u : ℝ≥0ˣ) : C𝔽 := QuotientGroup.mk (canonicalIdeleNormSection F u)
+  have hσ : Continuous σ :=
+    QuotientGroup.continuous_mk.comp (canonicalIdeleNormSection_continuous F)
+  have hσnorm : RightInverse σ (ideleClassNorm F) := canonicalIdeleNormSection_rightInverse F
+  let e : ℝ ≃ₜ ℝ≥0ˣ := Real.expOrderIso.toHomeomorph.trans (Nonneg.unitsHomeomorphPos ℝ).symm
+  have he (x : ℝ) : ((e x).val : ℝ) = Real.exp x := rfl
+  let eQ := (normQuotientEquiv (ideleClassNorm F) (isProperMap_ideleClassNorm F).continuous
+    σ hσ hσnorm).trans positiveRealLogEquiv
+  have hQ (x : ℝ) : (eQ (QuotientGroup.mk (σ (e x)))).toAdd = x := by
+    change (positiveRealLogEquiv (ideleClassNorm F (σ (e x)))).toAdd = x
+    rw [positiveRealLogEquiv_apply, hσnorm, he, Real.log_exp]
+  let φ₀ : SchwartzBruhat C𝔽 := ⟨φ.val, bruhatCompactSupport_mem_schwartz φ.property⟩
+  obtain ⟨M, hM⟩ := exists_schwartzBruhat_characterEquiv (G := C𝔽) χ
+  have hK : IsCompact (K : Set C𝔽) :=
+    (isProperMap_ideleClassNorm F).isCompact_preimage isCompact_singleton
+  let : LocallyCompactSpace K := hK.isClosed.locallyCompactSpace
+  let : CompactSpace K := (ideleClassGroup_finiteness F).2.1
+  let : ν.IsHaarMeasure := (multiplicativeTamagawaMeasures_existsUnique F).exists.choose_spec.2.2.2.1
+  let : ν.Regular := (multiplicativeTamagawaMeasures_existsUnique F).exists.choose_spec.2.2.2.2.1
+  let avg := schwartzBruhatCosetIntegral K ν hK.isClosed (M φ₀)
+  let : CommGroup (C𝔽 ⧸ K) := QuotientGroup.Quotient.commGroup K
+  let : T2Space (C𝔽 ⧸ K) := eQ.toHomeomorph.isEmbedding.t2Space
+  let : LocallyCompactSpace (C𝔽 ⧸ K) := eQ.toHomeomorph.isClosedEmbedding.locallyCompactSpace
+  obtain ⟨T, hT⟩ := schwartzBruhat_realCoordinate_equiv (G := C𝔽 ⧸ K) eQ
+  let f : 𝓢(ℝ, ℂ) := T.symm avg
+  have hf (x : ℝ) : f x = ∫ h : K, (χ (σ (e x) * h.val) : ℂ) * φ.val (σ (e x) * h.val) ∂ν := by
+    let u : C𝔽 ⧸ K := QuotientGroup.mk (σ (e x))
+    calc
+      f x = T f u := (congrArg f (hQ x)).symm.trans (hT f u).symm
+      _ = avg u := congrArg (fun g : SchwartzBruhat (C𝔽 ⧸ K) ↦ g u) (T.apply_symm_apply avg)
+      _ = ∫ h : K, (M φ₀) (σ (e x) * h.val) ∂ν :=
+        schwartzBruhatCosetIntegral_mk K ν hK.isClosed (M φ₀) _
+      _ = _ := integral_congr_ae (.of_forall fun h ↦ hM φ₀ (σ (e x) * h.val))
+  let : BorelSpace ℝ≥0ˣ := borelSpace_units_of_continuousInv₀ _
+  let : SecondCountableTopology ℝ≥0ˣ := Units.isEmbedding_val₀.secondCountableTopology
+  let : SFinite positiveRealHaar := by unfold positiveRealHaar; infer_instance
+  let j (p : ℝ≥0ˣ × K) := σ p.1 * p.2.val
+  have hj : Measurable j :=
+    ((hσ.comp continuous_fst).mul (continuous_subtype_val.comp continuous_snd)).measurable
+  have hmap : (positiveRealHaar.prod ν).map j = μ𝔽 := classTamagawa_normProduct σ hσ hσnorm
+  have hE : positiveRealHaar = volume.map e := by
+    unfold positiveRealHaar
+    congr 1
+    exact funext fun x ↦ Units.ext (NNReal.eq
+      ((Real.coe_toNNReal _ (Real.exp_pos x).le).trans (he x).symm))
+  refine ⟨f, fun t ↦ ?_⟩
+  let s := (t : ℂ) * Complex.I
+  let W := testIntegrand(χ, φ, s)
+  have hW : Integrable W μ𝔽 := (nuclearityTestMellin_integrable χ φ).1 s
+  have hm : AEStronglyMeasurable W ((positiveRealHaar.prod ν).map j) :=
+    hmap ▸ hW.aestronglyMeasurable
+  have hi : Integrable (W ∘ j) (positiveRealHaar.prod ν) :=
+    (integrable_map_measure hm hj.aemeasurable).mp (hmap ▸ hW)
+  change 𝓕 f (-(2 * Real.pi)⁻¹ * t) = ∫ g, W g ∂μ𝔽
+  rw [← hmap, integral_map hj.aemeasurable hm]
+  change _ = ∫ z, (W ∘ j) z ∂positiveRealHaar.prod ν
+  rw [integral_prod (W ∘ j) hi, hE,
+    show (volume : Measure ℝ).map e = volume.map e.toMeasurableEquiv from rfl,
+    integral_map_equiv e.toMeasurableEquiv, SchwartzMap.fourier_coe, Real.fourier_real_eq_integral_exp_smul]
+  apply integral_congr_ae
+  filter_upwards with x
+  have hphase : -2 * Real.pi * x * (-(2 * Real.pi)⁻¹ * t) = x * t := by
+    field_simp [Real.pi_ne_zero]
+  rw [hphase, hf, smul_eq_mul, ← integral_const_mul]
+  apply integral_congr_ae
+  filter_upwards with h
+  let g := σ (e x) * h.val
+  have hg : ((ideleClassNorm F g).val : ℝ) = Real.exp x := by
+    dsimp only [g]
+    rw [map_mul, hσnorm, show ideleClassNorm F h.val = 1 from h.property, mul_one, he]
+  change Complex.exp (((x * t : ℝ) : ℂ) * Complex.I) * ((χ g : ℂ) * φ.val g) =
+    φ.val g * ((χ g : ℂ) * (((ideleClassNorm F g).val : ℝ) : ℂ) ^ s)
+  rw [hg, Complex.cpow_def_of_ne_zero (Complex.ofReal_ne_zero.mpr (Real.exp_pos x).ne'),
+    ← Complex.ofReal_log (Real.exp_pos x).le, Real.log_exp]
+  push_cast
+  simp only [s]
+  ring
+
+open scoped FourierTransform SchwartzMap in
+/-- The Mellin transform of a compact Bruhat test has quadratic decay on the imaginary axis. -/
+private theorem finiteNuclearity_testMellin_quadraticDecay (φ : 𝒟) :
+    ∃ C : ℝ, ∀ t : ℝ, (1 + |t|) ^ 2 *
+      ‖nuclearityTestMellin χ φ ((t : ℂ) * Complex.I)‖ ≤ C := by
+  obtain ⟨f, hf⟩ := finiteNuclearity_testMellin_fourier χ φ
+  let G := 𝓕 f
+  let a : ℝ := -(2 * Real.pi)⁻¹
+  have ha : |a| ≠ 0 := abs_ne_zero.mpr (neg_ne_zero.mpr (inv_ne_zero (by positivity)))
+  let C₀ := SchwartzMap.seminorm ℂ 0 0 G
+  let C₂ := SchwartzMap.seminorm ℂ 2 0 G
+  refine ⟨2 * (C₀ + C₂ / |a| ^ 2), fun t ↦ ?_⟩
+  change (1 + |t|) ^ 2 * ‖nuclearityTestMellin χ φ ((t : ℂ) * Complex.I)‖ ≤ _
+  rw [← hf t]
+  change (1 + |t|) ^ 2 * ‖G (a * t)‖ ≤ _
+  have h₀ : ‖G (a * t)‖ ≤ C₀ := by
+    simpa [C₀] using SchwartzMap.le_seminorm' ℂ 0 0 G (a * t)
+  have h₂ : |t| ^ 2 * ‖G (a * t)‖ ≤ C₂ / |a| ^ 2 := by
+    have h := SchwartzMap.le_seminorm' ℂ 2 0 G (a * t)
+    simp only [iteratedDeriv_zero, Real.norm_eq_abs, abs_mul, mul_pow] at h
+    rw [le_div_iff₀ (pow_pos (abs_pos.mpr (abs_ne_zero.mp ha)) 2), mul_comm, ← mul_assoc]
+    exact h
+  calc
+    _ ≤ 2 * (1 + |t| ^ 2) * ‖G (a * t)‖ :=
+      mul_le_mul_of_nonneg_right (by nlinarith [sq_nonneg (|t| - 1)]) (norm_nonneg _)
+    _ = 2 * (‖G (a * t)‖ + |t| ^ 2 * ‖G (a * t)‖) := by ring
+    _ ≤ 2 * (C₀ + C₂ / |a| ^ 2) := by gcongr
+
+/-- The quadratic comparison series converges on each shifted lattice. -/
+private theorem finiteNuclearity_summable_shifted_weight (period shift : ℝ) (hperiod : 0 < period) :
+    Summable (fun k : ℤ ↦ 1 / (1 + |(k : ℝ) * period - shift|) ^ 2) := by
+  have hnat := (summable_nat_add_iff 1 (G := ℝ)).mpr
+    (Real.summable_one_div_nat_pow.mpr (by decide : 1 < 2))
+  have hint : Summable (fun k : ℤ ↦ 1 / (1 + |(k : ℝ)|) ^ 2) := by
+    apply summable_int_iff_summable_nat_and_neg.mpr
+    constructor <;> simpa [Nat.cast_add, add_comm] using hnat
+  let C := 1 + (1 + |shift|) / period
+  have hC : 0 < C := by dsimp [C]; positivity
+  refine (hint.mul_left (C ^ 2)).of_nonneg_of_le (fun _ ↦ by positivity) fun k ↦ ?_
+  let a := (k : ℝ) * period - shift
+  have hk : |(k : ℝ)| * period ≤ |a| + |shift| := by
+    calc
+      |(k : ℝ)| * period = |(k : ℝ) * period| := by rw [abs_mul, abs_of_pos hperiod]
+      _ = |a + shift| := by congr 1; dsimp [a]; ring
+      _ ≤ |a| + |shift| := abs_add_le ..
+  have hbound : 1 + |(k : ℝ)| ≤ C * (1 + |a|) := by
+    dsimp [C]
+    apply (le_of_mul_le_mul_right ?_ hperiod)
+    have h := abs_nonneg a
+    have h' := abs_nonneg shift
+    have ha : |a| ≤ (period + 1 + |shift|) * |a| := by
+      calc
+        |a| = 1 * |a| := (one_mul _).symm
+        _ ≤ _ := mul_le_mul_of_nonneg_right (by linarith) h
+    have he : (1 + (1 + |shift|) / period) * (1 + |a|) * period =
+        (period + 1 + |shift|) * (1 + |a|) := by
+      field_simp
+      ring
+    rw [he]
+    nlinarith only [hk, ha]
+  change 1 / (1 + |a|) ^ 2 ≤ C ^ 2 * (1 / (1 + |(k : ℝ)|) ^ 2)
+  have hd : 0 < (1 + |(k : ℝ)|) ^ 2 := by positivity
+  have ha : 0 < (1 + |a|) ^ 2 := by positivity
+  rw [mul_one_div, div_le_div_iff₀ ha hd, ← mul_pow, one_mul]
+  exact pow_le_pow_left₀ (by positivity) hbound 2
+
 /-- Paper: Theorem 7.4.2.1(2), p. 367.
 The trace series over the zeros of the reciprocal partial Euler product, weighted by their
 orders, converges absolutely. -/
@@ -2054,13 +2173,134 @@ theorem finiteNuclearity_term_summable (p : HeightOneSpectrum (𝓞 ℚ)) (φ : 
         (reciprocalPartialHeckeEulerProduct χ (Sₚ(p))) z} ↦
       ‖((analyticOrderAt (reciprocalPartialHeckeEulerProduct χ (Sₚ(p))) z.val).toNat : ℂ) *
         nuclearityTestMellin χ φ z.val‖) := by
-  sorry
+  classical
+  let S := Sₚ(p)
+  let R := reciprocalPartialHeckeEulerProduct χ S
+  let Z := {z : ℂ // 0 < analyticOrderAt R z}
+  let period (v : V) : ℝ := 2 * Real.pi / Real.log (v.asIdeal.absNorm : ℝ)
+  let coord (v : V) (t : ℝ) (k : ℤ) : ℂ := (((k : ℝ) * period v - t : ℝ) : ℂ) * Complex.I
+  have hS : S.filter (fun v ↦ v.under (𝓞 ℚ) = p) = S := by
+    apply Finset.filter_eq_self.mpr
+    intro v hv
+    exact (finite_nuclearityPlacesAbove (F := F) p).mem_toFinset.mp hv
+  have hp (v : V) : 0 < period v :=
+    div_pos Real.two_pi_pos (Real.log_pos (by exact_mod_cast HeightOneSpectrum.one_lt_absNorm v))
+  have hz (z : Z) : R z.val = 0 := by
+    by_contra h
+    have horder := z.property
+    rw [analyticOrderAt_eq_zero.mpr (Or.inr h)] at horder
+    exact (lt_irrefl _ horder)
+  let admissible (v : V) (t : ℝ) : Prop :=
+    t ∈ Ico 0 (period v) ∧
+      (ideleClassNormTwist χ 0).localValue v = (v.asIdeal.absNorm : ℂ) ^ (-(t : ℂ) * Complex.I)
+  let phase (v : V) : ℝ := if h : ∃ t, admissible v t then h.choose else 0
+  have phase_unique {v : V} {t u : ℝ} (ht : admissible v t) (hu : admissible v u) : t = u := by
+    have hq : (1 : ℝ) < (v.asIdeal.absNorm : ℝ) := by
+      exact_mod_cast HeightOneSpectrum.one_lt_absNorm v
+    let L := Real.log (v.asIdeal.absNorm : ℝ)
+    have hL : 0 < L := Real.log_pos hq
+    have hq0 : (v.asIdeal.absNorm : ℂ) ≠ 0 := by
+      exact_mod_cast (zero_lt_one.trans hq).ne'
+    have hcpow (r : ℝ) : (v.asIdeal.absNorm : ℂ) ^ (-(r : ℂ) * Complex.I) =
+        Complex.exp (((-r * L : ℝ) : ℂ) * Complex.I) := by
+      rw [Complex.cpow_def_of_ne_zero hq0, show Complex.log (v.asIdeal.absNorm : ℂ) = (L : ℂ) from Complex.natCast_log.symm]
+      congr 1
+      push_cast
+      ring
+    have hexp := ht.2.symm.trans hu.2
+    rw [hcpow, hcpow] at hexp
+    obtain ⟨n, hn⟩ := Complex.exp_eq_exp_iff_exists_int.mp hexp
+    have hni := congrArg Complex.im hn
+    simp only [Complex.mul_im, Complex.ofReal_re, Complex.I_im, mul_one,
+      Complex.ofReal_im, Complex.I_re, mul_zero, add_zero, Complex.add_im, Complex.intCast_re,
+      Complex.intCast_im, zero_mul, Complex.mul_re] at hni
+    norm_num at hni
+    have heq : u - t = (n : ℝ) * period v := by
+      apply (mul_right_cancel₀ hL.ne')
+      change (u - t) * L = (n : ℝ) * (2 * Real.pi / L) * L
+      rw [mul_assoc, div_mul_cancel₀ _ hL.ne']
+      linarith
+    have upper : (n : ℝ) < 1 := by
+      by_contra! h
+      have hm := mul_le_mul_of_nonneg_right h (hp v).le
+      linarith [ht.1.1, hu.1.2]
+    have lower : -(1 : ℝ) < n := by
+      by_contra! h
+      have hm := mul_le_mul_of_nonneg_right h (hp v).le
+      linarith [ht.1.2, hu.1.1]
+    have hn0 : n = 0 := by
+      have h₁ : (-1 : ℤ) < n := by exact_mod_cast lower
+      have h₂ : n < (1 : ℤ) := by exact_mod_cast upper
+      omega
+    simpa [hn0, sub_eq_zero, eq_comm] using heq
+  have cover (z : Z) : ∃ (v : S) (k : ℤ), z.val = coord v (phase v) k := by
+    have h : reciprocalPartialHeckeEulerProduct χ
+        (S.filter (fun v ↦ v.under (𝓞 ℚ) = p)) z.val = 0 := by rw [hS]; exact hz z
+    obtain ⟨v, hv, _, k, t, ht, hphase, hcoord⟩ := reciprocalEulerProduct_over_prime_zero χ S p h
+    rw [hS] at hv
+    have hadm : admissible v t := ⟨ht, hphase⟩
+    have he : ∃ u, admissible v u := ⟨t, hadm⟩
+    have hc : phase v = t := by
+      change (if h : ∃ u, admissible v u then h.choose else 0) = t
+      rw [dite_eq_left he]
+      exact phase_unique he.choose_spec hadm
+    exact ⟨⟨v, hv⟩, k, by simpa only [coord, hc] using hcoord⟩
+  choose v k hk using cover
+  let e (z : Z) : S × ℤ := (v z, k z)
+  have he : Injective e := by
+    intro z w h
+    apply Subtype.ext
+    have hv : v z = v w := congrArg Prod.fst h
+    have hkw : k z = k w := congrArg Prod.snd h
+    rw [hk z, hk w, hv, hkw]
+  obtain ⟨C, hC⟩ := finiteNuclearity_testMellin_quadraticDecay χ φ
+  let D := Module.finrank ℚ F
+  have horder (z : Z) : (analyticOrderAt R z.val).toNat ≤ D := by
+    have h := reciprocalEulerProduct_over_prime_order_le χ S p z.val
+    rw [hS] at h
+    exact ENat.toNat_le_of_le_natCast h
+  let w (i : S × ℤ) : ℝ :=
+    (D : ℝ) * C * (1 / (1 + |(i.2 : ℝ) * period i.1 - phase i.1|) ^ 2)
+  have hw : Summable w := by
+    have hC0 : 0 ≤ C := (by positivity : 0 ≤ (1 + |(0 : ℝ)|) ^ 2 *
+      ‖nuclearityTestMellin χ φ ((0 : ℂ) * Complex.I)‖).trans (by simpa using hC 0)
+    apply (summable_prod_of_nonneg (f := w) (fun i ↦ by dsimp [w]; positivity)).mpr
+    constructor
+    · intro v
+      change Summable (fun k : ℤ ↦ (D : ℝ) * C *
+        (1 / (1 + |(k : ℝ) * period v - phase v|) ^ 2))
+      exact (finiteNuclearity_summable_shifted_weight (period v) (phase v) (hp v)).mul_left ((D : ℝ) * C)
+    · exact (hasSum_fintype _).summable
+  apply (hw.comp_injective he).of_nonneg_of_le (fun _ ↦ norm_nonneg _)
+  intro z
+  rw [norm_mul, Complex.norm_natCast]
+  have hm : ‖nuclearityTestMellin χ φ z.val‖ ≤
+      C / (1 + |(k z : ℝ) * period (v z) - phase (v z)|) ^ 2 := by
+    let t : ℝ := (k z : ℝ) * period (v z) - phase (v z)
+    change ‖nuclearityTestMellin χ φ z.val‖ ≤ C / (1 + |t|) ^ 2
+    rw [show z.val = (t : ℂ) * Complex.I from hk z]
+    apply (le_div_iff₀ (show 0 < (1 + |t|) ^ 2 by positivity)).mpr
+    rw [mul_comm ‖nuclearityTestMellin χ φ ((t : ℂ) * Complex.I)‖]
+    exact hC t
+  calc
+    _ ≤ (D : ℝ) * ‖nuclearityTestMellin χ φ z.val‖ :=
+      mul_le_mul_of_nonneg_right (by exact_mod_cast horder z) (norm_nonneg _)
+    _ ≤ (D : ℝ) * (C / (1 + |(k z : ℝ) * period (v z) - phase (v z)|) ^ 2) :=
+      mul_le_mul_of_nonneg_left hm (Nat.cast_nonneg _)
+    _ = w (e z) := by
+      change (D : ℝ) * (C / (1 + |(k z : ℝ) * period (v z) - phase (v z)|) ^ 2) =
+        (D : ℝ) * C * (1 / (1 + |(k z : ℝ) * period (v z) - phase (v z)|) ^ 2)
+      rw [mul_one_div, mul_div_assoc]
 
 /-- Paper: Theorem 7.4.2.1(2), p. 367.
 The operator induced by the regularized action on the finite-place quotient has a nuclear
 presentation with rapidly decreasing coefficients whose trace is the sum of the Mellin
 transform of the test function over the zeros of the reciprocal Euler product, counted with
-order. -/
+order.
+This is the step that erratum I247 records as missing, and the printed proof does not give it.
+For `F = ℚ`, trivial `χ` and `p = 2`, the biorthogonal vectors of the proposed construction are
+unbounded for a seminorm that descends to the quotient, and the printed factorial rescaling is
+one, so a proof needs another rescaling or a controlled periodic model. -/
 theorem exists_finiteNuclearity_presentation (p : HeightOneSpectrum (𝓞 ℚ)) (φ : 𝒟) :
     let D := finiteNuclearityDenominator χ p
     let Q := Θ₀(χ) ⧸ D
@@ -2073,30 +2313,6 @@ theorem exists_finiteNuclearity_presentation (p : HeightOneSpectrum (𝓞 ℚ)) 
           (∑' z : {z : ℂ // 0 < analyticOrderAt R z},
             ((analyticOrderAt R z.val).toNat : ℂ) * nuclearityTestMellin χ φ z.val) := by
   sorry
-
-/-- The polar Mellin transform separates homogeneous theta classes by the two
-global converse theorems, using their respective kernels. -/
-private theorem finiteNuclearity_mellin_injective : Injective (Z(χ, τ, hτ)) := by
-  apply LinearMap.ker_eq_bot.mp
-  refine (Submodule.eq_bot_iff _).mpr fun x hx ↦ ?_
-  obtain ⟨f, rfl⟩ := Submodule.Quotient.mk_surjective (Π(χ)) x
-  have hZ : (Z(χ, τ, hτ)) (mkΘ(χ, f)) = 0 := hx
-  have hf (s : ℂ) : globalIdelicZFunction f.val (ideleClassNormTwist χ s) = 0 := by
-    rw [← ((exists_globalPolarThetaMellin χ τ hτ).choose_spec f s).2, hZ]
-    rfl
-  apply (Submodule.Quotient.mk_eq_zero (Π(χ))).mpr
-  by_cases hω : ω(χ) = 1
-  · obtain ⟨t, ht⟩ := (globalConverse_existsUnique_normTwist χ hω).exists
-    obtain ⟨M, _, _, hM, _, hker⟩ := globalConverse_normTwist χ t ht
-    have hm : f ∈ M.ker := specDenom_B_ext (M f) 0 (fun s ↦ (hM f s).trans (hf s))
-    have hK := congrArg (fun ψ ↦ (homogeneousAdelicThetaLinearMap F ψ).ker.comap (P).subtype) hω
-    exact (hK.trans hker.symm).ge hm
-  · obtain ⟨M, hM, hval, _⟩ := globalConverse_nontrivial χ hω
-    let K := (homogeneousAdelicThetaLinearMap F (ω(χ))).ker
-    have hfM : M (K.mkQ f.val) = 0 :=
-      specDenom_B_ext _ 0 (fun s ↦ (hval f.val s).trans (hf s))
-    change f.val ∈ K
-    exact (Submodule.Quotient.mk_eq_zero K).mp (hM.injective (hfM.trans M.map_zero.symm))
 
 local notation "orbitalGenerator(" S ")" => orbitalHeckeGenerator χ τ hτ
   (continuedCompletedHeckeL χ) (continuedCompletedHeckeL_spec χ).1
