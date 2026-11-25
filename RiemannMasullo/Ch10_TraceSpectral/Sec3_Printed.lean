@@ -1,6 +1,8 @@
 module
 
 public import RiemannMasullo.Ch10_TraceSpectral.Sec3
+public import Mathlib.NumberTheory.LSeries.DirichletContinuation
+public import Mathlib.NumberTheory.LSeries.RiemannZeta
 import RiemannMasullo.Ch10_TraceSpectral.Sec1
 import RiemannMasullo.AppD_SchwartzBruhat.Sec3a_part2
 import RiemannMasullo.Ch03_IdelicZeta.Sec4
@@ -327,6 +329,245 @@ theorem Printed.spectralLineJet_uniformBiorthogonalBound_false :
   intro heq
   have hr := congrArg (fun v : SpectralLineJetIndex χ (1 / 2) 2 ↦ v.val.2.1) heq
   exact hne n (by simpa only [hi, hj] using hr)
+
+section CloseCriticalZeros
+
+open Filter
+open scoped Topology
+
+/-- Classical input, not a statement of the paper. For every `δ > 0` some primitive Dirichlet
+character has two distinct zeros on the critical line whose ordinates differ by less than `δ`,
+and the character may depend on `δ`. It follows from the zeta count of
+`spectralLineJet_rational_critical_zero_count` (Selberg) through the character of conductor one
+(`primitiveDirichletLCloseCriticalZeros_of_zeta_count`). It also follows from the second moment
+of quadratic Dirichlet L-functions at one fixed shift, M. Čech, *Moments of real Dirichlet
+L-functions and multiple Dirichlet series*, arXiv:2402.07473, Corollary 1.5 with k = 2. For
+odd squarefree d the completed L-function of χ_{8d} is real and even on the critical line, the
+sum over d of its values at 1/2 and 1/2 + it changes sign as the length of the sum grows, and a
+sign change of one of them on (0, t) gives two zeros ±γ (argument on issue #6742). Stated as a
+proposition, so that what is proved from it takes it as a hypothesis by name. -/
+def PrimitiveDirichletLCloseCriticalZeros : Prop :=
+  ∀ δ : ℝ, 0 < δ → ∃ (N : ℕ) (_ : NeZero N) (χ : DirichletCharacter ℂ N), χ.IsPrimitive ∧
+    ∃ t u : ℝ, t ≠ u ∧ |t - u| < δ ∧
+      χ.LFunction ((1 / 2 : ℂ) + (t : ℂ) * Complex.I) = 0 ∧
+      χ.LFunction ((1 / 2 : ℂ) + (u : ℂ) * Complex.I) = 0
+
+/-- The zeta count of `spectralLineJet_rational_critical_zero_count` implies
+`PrimitiveDirichletLCloseCriticalZeros`, through the character of conductor one. -/
+theorem primitiveDirichletLCloseCriticalZeros_of_zeta_count
+    (hcount : ∀ k : ℕ, ∃ T : ℕ, ∃ S : Finset ℝ, (k + 1) * (T + 1) < S.card ∧
+      ∀ t ∈ S, t ∈ Set.Ioc (0 : ℝ) T ∧ riemannZeta (1 / 2 + (t : ℂ) * Complex.I) = 0) :
+    PrimitiveDirichletLCloseCriticalZeros := by
+  intro δ hδ
+  obtain ⟨k, hk⟩ := exists_nat_one_div_lt hδ
+  obtain ⟨t, u, hne, hgap, ht, hu⟩ := spectralLineJet_close_ordinates hcount k
+  refine ⟨1, inferInstance, 1, ?_, t, u, hne, hgap.trans hk, ?_, ?_⟩
+  · exact DirichletCharacter.isPrimitive_one_level_one
+  · rw [DirichletCharacter.LFunction_modOne_eq]
+    exact ht
+  · rw [DirichletCharacter.LFunction_modOne_eq]
+    exact hu
+
+/-- A basepoint choice over the rationals through which every primitive Dirichlet character is
+the basepoint of some norm-one row. The lift is the identity on the section of the norm. -/
+private theorem spectralLineJet_dirichlet_basepoint :
+    ∃ χ : PontryaginDual C₁(ℚ) → PontryaginDual C𝔽(ℚ), IsSpectralBasepointChoice χ ∧
+      ∀ (N : ℕ) [NeZero N] (ψ : DirichletCharacter ℂ N), ψ.IsPrimitive →
+        ∃ η : PontryaginDual C₁(ℚ), ∀ (s : ℂ) (hs : 1 < s.re),
+          finiteHeckeL (χ η) ⟨s, hs⟩ = LSeries (ψ ·) s := by
+  let q : (AdeleRing (𝓞 ℚ) ℚ)ˣ →ₜ* C𝔽(ℚ) := ⟨QuotientGroup.mk' _, continuous_quotient_mk'⟩
+  let τ := q.comp ⟨canonicalIdeleNormSection ℚ, canonicalIdeleNormSection_continuous ℚ⟩
+  have hτ : RightInverse τ (ideleClassNorm ℚ) := canonicalIdeleNormSection_rightInverse ℚ
+  let n : C𝔽(ℚ) →ₜ* ℝ≥0ˣ := ⟨ideleClassNorm ℚ, (isProperMap_ideleClassNorm ℚ).continuous⟩
+  let p := ContinuousMonoidHom.id C𝔽(ℚ) / τ.comp n
+  have hp (x : C𝔽(ℚ)) : p x ∈ C₁(ℚ) := by
+    change ideleClassNorm ℚ (x / τ (ideleClassNorm ℚ x)) = 1
+    rw [map_div, hτ, div_self']
+  let r : C𝔽(ℚ) →ₜ* C₁(ℚ) := ⟨p.toMonoidHom.codRestrict _ hp, p.continuous.subtype_mk _⟩
+  let χ (η : PontryaginDual C₁(ℚ)) := η.comp r
+  refine ⟨χ, ?_, fun N _ ψ hψ ↦ ?_⟩
+  · intro η
+    ext g : 1
+    apply congrArg η
+    apply Subtype.ext
+    change g.val / τ (ideleClassNorm ℚ g.val) = g.val
+    rw [show ideleClassNorm ℚ g.val = 1 from g.property, map_one, div_one]
+  obtain ⟨Ψ, hfin, _, hL⟩ := DirichletCharacter.IsPrimitive.exists_finiteHeckeL_eq_with_values hψ
+  have hnorm (x : ℝ≥0ˣ) : Ψ (τ x) = 1 := by
+    obtain ⟨m, hm, hΨ⟩ := isOfFinOrder_iff_pow_eq_one.mp hfin
+    let y : ℝ≥0ˣ := Units.mk0 ((x : ℝ≥0) ^ ((m : ℝ)⁻¹)) (NNReal.rpow_pos (Units.zero_lt x)).ne'
+    have hy : y ^ m = x := Units.ext (by
+      simp only [Units.val_pow_eq_pow_val, y, Units.val_mk0]
+      exact NNReal.rpow_inv_natCast_pow _ hm.ne')
+    calc Ψ (τ x) = Ψ (τ y) ^ m := by rw [← hy, map_pow, map_pow]
+      _ = (Ψ ^ m) (τ y) := (ContinuousMonoidHom.pow_apply Ψ m _).symm
+      _ = 1 := by rw [hΨ]; rfl
+  let η : PontryaginDual C₁(ℚ) := Ψ.comp ⟨(ideleClassNorm ℚ).ker.subtype, continuous_subtype_val⟩
+  have hη : χ η = Ψ := by
+    ext g : 1
+    change Ψ (g / τ (ideleClassNorm ℚ g)) = Ψ g
+    rw [map_div, hnorm, div_one]
+  refine ⟨η, fun s hs ↦ ?_⟩
+  rw [hη]
+  exact hL s hs
+
+/-- A critical-line zero of a primitive Dirichlet L-function gives a zeroth jet index of the row
+whose basepoint has the same finite L-function. -/
+private theorem spectralLineJet_dirichlet_zero_index
+    (χ : PontryaginDual C₁(ℚ) → PontryaginDual C𝔽(ℚ))
+    {N : ℕ} [NeZero N] (ψ : DirichletCharacter ℂ N) (η : PontryaginDual C₁(ℚ))
+    (hη : ∀ (s : ℂ) (hs : 1 < s.re), finiteHeckeL (χ η) ⟨s, hs⟩ = LSeries (ψ ·) s)
+    (t : ℝ) (ht : ψ.LFunction ((1 / 2 : ℂ) + (t : ℂ) * Complex.I) = 0) :
+    ∃ j : SpectralLineJetIndex χ (1 / 2) 2, j.val = (η, t, 0) := by
+  let z : ℂ := (1 / 2 : ℂ) + (t : ℂ) * Complex.I
+  have hre : z.re = 1 / 2 := by simp [z, Complex.mul_re]
+  have hne : z ≠ 1 := fun e ↦ by norm_num [e] at hre
+  have hm := meromorphic_dirichletLFunction ψ
+  have hd : DifferentiableOn ℂ ψ.LFunction {1}ᶜ := fun w hw ↦
+    (DirichletCharacter.differentiableAt_LFunction ψ w (.inl hw)).differentiableWithinAt
+  have ha := hd.analyticAt (isOpen_compl_singleton.mem_nhds hne)
+  have hz : 0 < meromorphicOrderAt ψ.LFunction z :=
+    lt_of_le_of_ne ha.meromorphicOrderAt_nonneg fun h ↦
+      ha.meromorphicNFAt.meromorphicOrderAt_eq_zero_iff.mp h.symm ht
+  have h2 : meromorphicOrderAt ψ.LFunction (2 : ℂ) = 0 := by
+    have ha2 := hd.analyticAt (isOpen_compl_singleton.mem_nhds (by norm_num : (2 : ℂ) ≠ 1))
+    exact ha2.meromorphicNFAt.meromorphicOrderAt_eq_zero_iff.mpr
+      (DirichletCharacter.LFunction_ne_zero_of_one_le_re ψ (.inr (by norm_num)) (by norm_num))
+  have hfin := (hm).meromorphicOrderAt_ne_top_of_isPreconnected isPreconnected_univ
+    (mem_univ (2 : ℂ)) (mem_univ z) (by rw [h2]; simp)
+  have hnat : 0 < (meromorphicOrderAt ψ.LFunction z).untop₀.toNat := by
+    rw [← WithTop.coe_untop₀_of_ne_top hfin] at hz
+    have hint : 0 < (meromorphicOrderAt ψ.LFunction z).untop₀ := WithTop.coe_lt_coe.mp hz
+    omega
+  have hcongr := meromorphicOrderAt_finiteHeckeL_continuation (χ η) hm
+    (fun w ↦ (DirichletCharacter.LFunction_eq_LSeries ψ w.property).trans (hη w w.property).symm)
+    (show 0 < z.re by rw [hre]; norm_num)
+  refine ⟨⟨(η, t, 0), ?_⟩, rfl⟩
+  apply (lt_spectralBoundaryMultiplicity 2 _ 0).mpr
+  refine ⟨?_, by norm_num⟩
+  rw [hcongr] at hnat
+  convert hnat using 1
+  push_cast
+  rfl
+
+/-- The unit-multiplier version of `spectralLineJet_dist_tendsto`. -/
+private theorem spectralLineJet_dist_tendsto_unimodular {G : Type*} [MeasurableSpace G]
+    (μ : Measure G)
+    (P : ℝ → G → ℂ) (hone : ∀ t g, ‖P t g‖ = 1)
+    (hp : ∀ g, ContinuousAt (fun t ↦ P t g) 0) (hp0 : ∀ g, P 0 g = 1)
+    (hsub : ∀ t u g, P t g - P u g = (P (t - u) g - 1) * P u g)
+    (t u : ℕ → ℝ) (hlim : Tendsto (fun n ↦ t n - u n) atTop (𝓝 0))
+    (c : ℕ → G → ℂ) (hc : ∀ n g, ‖c n g‖ = 1)
+    (x y : ℕ → Lp ℂ 2 μ)
+    (hx : ∀ n, (x n : G → ℂ) =ᵐ[μ] fun g ↦ c n g * P (t n) g)
+    (hy : ∀ n, (y n : G → ℂ) =ᵐ[μ] fun g ↦ c n g * P (u n) g) :
+    Tendsto (fun n ↦ dist (x n) (y n)) atTop (𝓝 0) := by
+  let d (n : ℕ) := x n - y n
+  have hd (n : ℕ) : ∀ᵐ g ∂μ, ‖d n g‖ = ‖P (t n) g - P (u n) g‖ := by
+    filter_upwards [Lp.coeFn_sub (x n) (y n), hx n, hy n] with g h₁ h₂ h₃
+    have h : d n g = c n g * (P (t n) g - P (u n) g) := by
+      rw [mul_sub, ← h₂, ← h₃]
+      exact h₁
+    rw [h, norm_mul, hc, one_mul]
+  have h4 : Integrable (fun _ : G ↦ (4 : ℝ)) μ := by
+    have hi := (memLp_two_iff_integrable_sq_norm (Lp.aestronglyMeasurable (x 0))).mp (Lp.memLp _)
+    refine (hi.const_mul 4).congr ?_
+    filter_upwards [hx 0] with g hg
+    simp only [hg, norm_mul, hc, hone, one_pow, mul_one]
+  have he (g : G) : Tendsto (fun n ↦ ‖P (t n) g - P (u n) g‖ ^ 2) atTop (𝓝 0) := by
+    have h := (((hp g).tendsto.comp hlim).sub_const 1).norm.pow 2
+    simpa only [hsub, norm_mul, hone, mul_one, Function.comp_def, hp0, sub_self, norm_zero,
+      zero_pow (by decide : 2 ≠ 0)] using h
+  have hs := tendsto_integral_of_dominated_convergence
+    (F := fun n g ↦ ‖d n g‖ ^ 2) (f := fun _ ↦ (0 : ℝ)) (fun _ ↦ (4 : ℝ))
+    (fun n ↦ (Lp.aestronglyMeasurable (d n)).norm.pow _) h4
+    (fun n ↦ (hd n).mono fun g hg ↦ by
+      rw [Real.norm_eq_abs, abs_of_nonneg (sq_nonneg _), hg]
+      have h := norm_sub_le (P (t n) g) (P (u n) g)
+      rw [hone, hone] at h
+      exact (pow_le_pow_left₀ (norm_nonneg _) h 2).trans_eq (by norm_num))
+    (by
+      filter_upwards [ae_all_iff.mpr hd] with g hg
+      exact (he g).congr fun n ↦ by rw [hg n])
+  have hs' : Tendsto (fun n ↦ ‖d n‖ ^ 2) atTop (𝓝 0) := by
+    simpa only [spectralLineJet_norm_sq μ, integral_zero] using hs
+  simpa only [Function.comp_def, Real.sqrt_sq (norm_nonneg _), Real.sqrt_zero,
+    d, dist_eq_norm] using (Real.continuous_sqrt.tendsto _).comp hs'
+
+/-- Within one row the order-zero jets at frequencies t and u differ by the unit-modulus phase
+of the basepoint times the phases |g|^(it) and |g|^(iu), so their L² distance tends to zero
+with t - u. -/
+private theorem spectralLineJet_row_phase_dist
+    (χ : PontryaginDual C₁(ℚ) → PontryaginDual C𝔽(ℚ)) (η : ℕ → PontryaginDual C₁(ℚ))
+    (t u : ℕ → ℝ) (hlim : Tendsto (fun n ↦ t n - u n) atTop (𝓝 0))
+    (i j : ℕ → SpectralLineJetIndex χ (1 / 2) 2)
+    (hi : ∀ n, (i n).val = (η n, t n, 0)) (hj : ∀ n, (j n).val = (η n, u n, 0)) :
+    let hs : (1 : ℝ) < 2 := by norm_num
+    let jet (v : SpectralLineJetIndex χ (1 / 2) 2) :=
+      (spectralLineJet_memLp χ hs v).toLp (spectralZeroJet (χ v.val.1) 0 v.val.2.1 v.val.2.2)
+    Tendsto (fun n ↦ dist (jet (i n)) (jet (j n))) atTop (𝓝 0) := by
+  intro hs jet
+  let R (g : C𝔽(ℚ)) : ℝ := ((ideleClassNorm ℚ g).val : ℝ)
+  let P (t : ℝ) (g : C𝔽(ℚ)) : ℂ := (R g : ℂ) ^ ((t : ℂ) * Complex.I)
+  have hR (g) : 0 < R g := Units.zero_lt (ideleClassNorm ℚ g)
+  have hP (t g) : ‖P t g‖ = 1 := by
+    dsimp only [P]
+    rw [Complex.norm_cpow_eq_rpow_re_of_pos (hR g)]
+    simp [Complex.mul_re]
+  have hcont (g) : ContinuousAt (fun r ↦ P r g) 0 :=
+    ((continuous_const_cpow' (Complex.ofReal_ne_zero.mpr (hR g).ne')).comp
+      (Complex.continuous_ofReal.mul continuous_const)).continuousAt
+  have hsub (t u g) : P t g - P u g = (P (t - u) g - 1) * P u g := by
+    have he : P t g = P (t - u) g * P u g := by
+      dsimp [P]
+      rw [← Complex.cpow_add _ _ (Complex.ofReal_ne_zero.mpr (hR g).ne')]
+      push_cast
+      ring_nf
+    rw [he, sub_mul, one_mul]
+  let ν := (ideleClassTamagawaMeasure ℚ).withDensity fun g : C𝔽(ℚ) ↦
+    ENNReal.ofReal (intervalSobolevDensity 0 0 2 (Real.log (R g)))⁻¹
+  have hc (v : SpectralLineJetIndex χ (1 / 2) 2) (e : PontryaginDual C₁(ℚ)) (r : ℝ)
+      (hv : v.val = (e, r, 0)) :
+      (jet v : C𝔽(ℚ) → ℂ) =ᵐ[ν] fun g ↦ (χ e g : ℂ) * P r g := by
+    refine (MemLp.coeFn_toLp (spectralLineJet_memLp χ hs v)).trans (ae_of_all _ fun g ↦ ?_)
+    rw [hv, spectralZeroJet, pow_zero, mul_one, Complex.ofReal_zero, zero_add]
+    rfl
+  exact spectralLineJet_dist_tendsto_unimodular ν P hP hcont (fun g ↦ by simp [P]) hsub t u hlim
+    (fun n g ↦ (χ (η n) g : ℂ)) (fun n g ↦ by simp)
+    (fun n ↦ jet (i n)) (fun n ↦ jet (j n)) (fun n ↦ hc _ _ _ (hi n)) (fun n ↦ hc _ _ _ (hj n))
+
+/-- Paper: (10.3.1.18), p. 451. The printed bound fails as soon as primitive Dirichlet characters
+have arbitrarily close pairs of critical-line zeros (`PrimitiveDirichletLCloseCriticalZeros`).
+Over ℚ take a = 1/2 and s = 2, with basepoints trivial on the canonical norm section, so that
+every primitive Dirichlet character is the basepoint of a row. The printed constant is uniform
+over the rows, so the jets of all rows are uniformly separated. In the row of a character with
+zeros at t and u the two zeroth jets differ by a unit-modulus factor times |g|^(it) − |g|^(iu),
+and their distance tends to zero with t − u. -/
+theorem Printed.spectralLineJet_uniformBiorthogonalBound_false_of_closeCriticalZeros
+    (h : PrimitiveDirichletLCloseCriticalZeros) :
+    ¬ Printed.spectralLineJet_uniformBiorthogonalBound := by
+  classical
+  intro hP
+  obtain ⟨χ, hχ, hrow⟩ := spectralLineJet_dirichlet_basepoint
+  obtain ⟨ε, hε, hsep⟩ := spectralLineJet_separation_of_printed hP χ hχ
+  choose N hN ψ hprim t u hne hgap ht hu using
+    fun n : ℕ ↦ h (1 / ((n : ℝ) + 1)) (by positivity)
+  have hη := fun n ↦ @hrow (N n) (hN n) (ψ n) (hprim n)
+  choose η hηL using hη
+  choose i hi using fun n ↦
+    @spectralLineJet_dirichlet_zero_index χ (N n) (hN n) (ψ n) (η n) (hηL n) (t n) (ht n)
+  choose j hj using fun n ↦
+    @spectralLineJet_dirichlet_zero_index χ (N n) (hN n) (ψ n) (η n) (hηL n) (u n) (hu n)
+  have hlim : Tendsto (fun n ↦ t n - u n) atTop (𝓝 0) :=
+    squeeze_zero_norm (fun n ↦ (hgap n).le) tendsto_one_div_add_atTop_nhds_zero_nat
+  have hdist := spectralLineJet_row_phase_dist χ η t u hlim i j hi hj
+  obtain ⟨n, hn⟩ := (hdist.eventually (eventually_lt_nhds hε)).exists
+  apply (hsep (i n) (j n) ?_).not_gt hn
+  intro heq
+  have hr := congrArg (fun v : SpectralLineJetIndex χ (1 / 2) 2 ↦ v.val.2.1) heq
+  exact hne n (by simpa only [hi, hj] using hr)
+
+end CloseCriticalZeros
 
 /-- Paper: Theorem 10.3.1.1(3), p. 449. A test of left-translation weight
 ω⁻¹ is asserted to give an operator valued in the line quotient isotype ω. -/
