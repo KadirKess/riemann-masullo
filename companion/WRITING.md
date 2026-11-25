@@ -6,7 +6,7 @@ A reader should be able to reconstruct a repair from the note, Masullo's paper, 
 
 Start the heading with the paper's item type and number, including the part when the note covers one. Follow it with a short title, as in `Theorem 5.2.1.1(3). Embedding a finite theta stage`. The same heading appears in the table of contents.
 
-Open with the printed page, what the result is used for, and the idea that makes the repair work. Identify the exact step that fails. For a false claim, give a counterexample or point to one. For a missing justification, name the inference that needs to be proved. Check the cited passage against the PDF and link the erratum or issue.
+Give the printed page and state the claim in terms a reader of the paper will recognize. Explain which step needs repair before introducing the construction that replaces it. Discuss downstream uses where the reader has enough information to understand them. For a false claim, give a counterexample or point to one. For a missing justification, name the inference that needs to be proved. Check the cited passage against the PDF and link the erratum or issue.
 
 Give the repaired statement before the proof, with its hypotheses, quantifiers, and conclusion. Use the paper's notation where it agrees with the formalization. Explain any difference that affects the statement, such as a stricter cutoff, a weaker conclusion, or a different topology. When the statement changes, point to the first relevant downstream use and say whether the repaired form suffices there.
 
