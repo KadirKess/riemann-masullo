@@ -142,15 +142,15 @@ insertion, so \(\bar\pi_{S,T}\) is a topological embedding.
 
 \subsection{The topology of the global union}
 
-Composition gives the original topology inside every larger finite stage.
-To recover it inside the union, we extend each continuous seminorm on the
-stage to the union. By Proposition~2.1.4.1, every global test comes from a
-finite stage, so every class in \(Q_F\) has a finite-stage representative.
-The compatible injections thus identify \(Q_F\) with the union of the stages. A seminorm on \(Q_F\) is continuous exactly when its pullback
-to the global test space is continuous. The final locally convex topology
-on the global test space lets us check continuity of this pullback on each
-finite test space. The stage quotient maps turn this into a test on each
-finite theta stage, so \(Q_F\) has their final locally convex topology.
+Composing one-place embeddings gives all finite-stage embeddings. To recover
+the stage topology inside the union, we extend its continuous seminorms.
+By Proposition~2.1.4.1 every global test comes from a finite stage, so every
+class in \(Q_F\) has a finite-stage representative. The compatible injections
+thus identify \(Q_F\) with the union. A seminorm on \(Q_F\) is continuous
+exactly when its pullback to the global test space is continuous. By the
+final locally convex topology on tests, we can check this on each \(B_S\),
+and by the quotient topology on \(Q_S\), this amounts to continuity on each
+theta stage.
 (\href{https://github.com/mccorvie/riemann-masullo/blob/ac7e1cde68ff1fac01ecbef3c0e9f48e46bc1f06/RiemannMasullo/Ch05_ThetaZSpaces/Sec2.lean#L2458-L2499}{Exhaustion and final topology in Lean}.)
 
 Choose an increasing chain of finite stages starting at \(S\) and eventually
