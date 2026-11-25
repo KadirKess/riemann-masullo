@@ -3,10 +3,11 @@
 The global theta space is built from finite stages. Each stage keeps its
 original topology inside the global space, as stated on
 \href{https://github.com/mccorvie/riemann-masullo/blob/ac7e1cde68ff1fac01ecbef3c0e9f48e46bc1f06/paper/the-music-of-the-primes.pdf#page=230}{p.~230 of the paper}.
-The repair starts by adding one finite place. On an inserted test, two
-evaluations at the new place select the terms of nonnegative and positive
-valuation, respectively. Subtracting leaves the terms of valuation zero,
-which are the terms in the old sum.
+On p.~231 Masullo tries to recover the finite stage by projecting a global
+test function. Two tests with the same global theta function can have
+projections with different theta functions, so the result depends on the
+representative. We instead add one finite place at a time and recover the
+old theta function from two averages of the new one.
 
 Let \(F\) be a number field and \(S\) a finite set of places containing the
 archimedean places. Write \(B_S=\mathcal S(\mathbf A_{F,S})\) for the
